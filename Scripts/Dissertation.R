@@ -7,7 +7,7 @@
 
 #WD
 setwd("~/") #erases previously set WDs
-setwd("Personal repo - zmancekpali/Dissertation") #sets a new one
+setwd("UOE Dissertation 2024") #sets a new one
 getwd() #check that it's worked
 
 
@@ -19,6 +19,7 @@ library(e1071)
 library(ggfortify)
 library(ggpubr)
 library(ggrepel)
+library(ggsignif)
 library(gridExtra)
 library(lme4)
 library(MASS)
@@ -28,24 +29,23 @@ library(tidyverse)
 library(vegan)
 
 #Data
-trees <- read.csv("traits_analysis2.csv")
+trees <- read.csv("Data/traits_analysis2.csv")
 trees <- trees %>% 
   mutate(canopy_pos = recode(canopy_pos, 
                              "L" = "Lower",
                              "U" = "Upper")) %>%  #recode canopy positions from abbreviations
   mutate(code_two = recode(code_two,
-                           "CB" = "C. bullatus",
-                           "RPS" = "R. pseudoacacia semperflorens")) %>% #recode alien species names
+                           "CB" = "C. bullatus")) %>% #recode alien species names
   filter(A >= 0) %>% 
   arrange(code_two = factor(type, levels = c('Native', 'Naturalised', 'Invasive', 
-                                             'C. bullatus', 'R. pseudoacacia semperflorens'))) #rearranges the categories in this order
+                                             'C. bullatus'))) #rearranges the categories in this order
 
 trees$age <- as.numeric(trees$age)
 
 (trees_counts <- trees %>%
     group_by(type) %>%
     summarise(unique_species = n_distinct(code)))
-#1 invasive, 12 naturalised, 20 native, 2 alien
+#1 invasive, 12 naturalised, 20 native, 1 alien
 
 
 nns <- trees %>% 
@@ -64,17 +64,15 @@ nns <- trees %>%
 traits.palette <- c("#CD6090", "#698B69", "#EEC900")    #defining 3 colours
 traits.palette2 <- c("#CD6090", "#698B69", "#EEC900", "#5EA8D9", "#245C82", "#4A3E87", "#5A5DC7")
 
-cn_trees <- read.csv("cn_analysis.csv")
+cn_trees <- read.csv("Data/cn_analysis.csv")
 cn_trees <- cn_trees %>% 
   mutate(canopy_pos = recode(canopy_pos, 
                              "L" = "Lower",
                              "U" = "Upper")) %>%  #recode canopy positions from abbreviations
   mutate(code_two = recode(code_two,
-                           "CB" = "C. bullatus",
-                           "RPS" = "R. pseudoacacia semperflorens")) %>% #recode alien species names
+                           "CB" = "C. bullatus")) %>% #recode alien species names
   arrange(code_two = factor(type, levels = c('Native', 'Naturalised', 'Invasive', 
-                                             'C. bullatus',
-                                             'R. pseudoacacia semperflorens'))) %>% #rearranges the categories in this order
+                                             'C. bullatus'))) %>% #rearranges the categories in this order
   mutate(c_n = C/N)
 
 cn_trees$age <- as.numeric(cn_trees$age)
@@ -102,7 +100,7 @@ head(cn_nns)
 lma_mod <- lm(lma ~ type, data = nns)
 autoplot(lma_mod)
 shapiro.test(resid(lma_mod)) #residuals not distributed normally
-bartlett.test(lma ~ type, data = nns) #heteroscedascity
+bartlett.test(lma ~ type, data = nns) #homoscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
 lma_boxcox <- boxcox(lma ~ 1, data = nns) #the λ is the highest point on the curve
@@ -112,7 +110,7 @@ nns <- nns %>% mutate(transformed_lma = (lma ^ (lma_lambda - 1)) / lma_lambda) #
 lma_mod_trans <- lm(transformed_lma ~ type, data = nns)
 autoplot(lma_mod_trans)
 shapiro.test(resid(lma_mod_trans)) #residuals not distributed normally
-bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
+bartlett.test(transformed_lma ~ type, data = nns) #homoscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
 (lma_kw <- kruskal.test(lma ~ type, data = nns)) #p-value = 0.0005229; significant
@@ -129,7 +127,11 @@ bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = , "cm"), 
-          legend.position = "none"))
+          legend.position = "none") +
+    geom_signif(comparisons = list(c("Native", "Invasive"),
+                                   c("Invasive", "Naturalised")),
+                map_signif_level = TRUE,
+                y_position = c(160, 140)))
 
 ggsave("lma_boxplot.jpg", lma_boxplot, path = "Plots", units = "cm", width = 20, height = 15) 
 

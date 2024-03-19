@@ -1,16 +1,10 @@
-﻿code,code_two,latin_name,type,ever_dec,lat,long,age,dbh,canopy_pos,chl,lma,ldcm,A,Dark_resp,E,g,comments
+code,code_two,latin_name,type,ever_dec,lat,long,age,dbh,canopy_pos,chl,lma,ldcm,A,Dark_resp,E,g,comments
 CB,CB,Cotoneaster bullatus,Alien,Evergreen,55.964767,-3.207967,17,4.3,U,47.7,103.8602,0.2684,12.4,-0.78,4.19,83.48,
 CB,CB,Cotoneaster bullatus,Alien,Evergreen,55.964767,-3.207967,17,4.3,U,47.7,93.0271,0.3071,10.95,-0.19,6.13,80.85,
 CB,CB,Cotoneaster bullatus,Alien,Evergreen,55.964767,-3.207967,17,4.3,U,48.6,97.6425,0.1448,11.35,-0.29,5.64,97.84,
 CB,CB,Cotoneaster bullatus,Alien,Evergreen,55.964767,-3.207967,17,4.3,L,63.8,80.2682,0.5061,10.38,0.19,4.65,94.81,
 CB,CB,Cotoneaster bullatus,Alien,Evergreen,55.964767,-3.207967,17,4.3,L,60.1,76.4573,0.3996,7.03,-0.04,5.95,97.98,
 CB,CB,Cotoneaster bullatus,Alien,Evergreen,55.964767,-3.207967,17,4.3,L,60.1,77.3469,0.4238,9.14,-0.28,4.88,96.18,
-RPS,RPS,Robinia pseudoacacia Semperflorens,Alien,Deciduous,55.9659,-3.211483,120,75,U,30.8,76.1191,0.48,14.56,-1.22,6.5,66.24,
-RPS,RPS,Robinia pseudoacacia Semperflorens,Alien,Deciduous,55.9659,-3.211483,120,75,U,32.1,67.5914,0.5324,13.57,-1.33,5.5,71.57,
-RPS,RPS,Robinia pseudoacacia Semperflorens,Alien,Deciduous,55.9659,-3.211483,120,75,U,30.4,71.9639,0.543,11.69,-1.37,5.49,69.52,
-RPS,RPS,Robinia pseudoacacia Semperflorens,Alien,Deciduous,55.9659,-3.211483,120,75,L,29.4,56.4919,0.4248,12.02,-1.15,6.73,61.76,
-RPS,RPS,Robinia pseudoacacia Semperflorens,Alien,Deciduous,55.9659,-3.211483,120,75,L,29.7,58.9724,0.3495,10.85,-1.01,6.88,59.96,
-RPS,RPS,Robinia pseudoacacia Semperflorens,Alien,Deciduous,55.9659,-3.211483,120,75,L,28.6,57.9093,0.5306,11.2,-0.64,5.11,62.55,
 RP,Invasive,Rhododendron ponticum,Invasive,Evergreen,55.96655,-3.209983,46,11,U,58,84.1799,0.4601,16.72,0.35,5.3,83.45,
 RP,Invasive,Rhododendron ponticum,Invasive,Evergreen,55.96655,-3.209983,46,11,U,56.3,81.4563,0.4903,14.19,-0.04,4.95,98.36,
 RP,Invasive,Rhododendron ponticum,Invasive,Evergreen,55.96655,-3.209983,46,11,U,57.5,78.2989,0.4991,15.94,0.26,5.73,82.33,
