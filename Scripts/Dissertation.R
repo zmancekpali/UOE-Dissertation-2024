@@ -253,7 +253,7 @@ anova(e_mod) #NS; p-value = 0.5231
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
     labs(x = "\n Invasion status", 
-         y = expression(atop(paste("Evapotranspiration rate (", mu, "mol CO"[2] ~ "m"^-2*~"s"^-1, ")")))) +
+         y = expression(paste("Evapotranspiration rate (", mu, "mol H"[2]*"O" ~ "m"^-2*"s"^-1, ")"))) +    
     theme_classic() + 
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
@@ -294,7 +294,7 @@ kruskal.test(g ~ type, data = nns) #0.02564; significant
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
     labs(x = "\n Invasion status", 
-         y = expression(atop(paste("Stomatal conductance rate (", mu, "mol CO"[2] ~ "m"^-2*~"s"^-1, ")")))) +
+         y = expression(paste("Evapotranspiration rate (", mu, "mol H"[2]*"O" ~ "m"^-2*"s"^-1, ")"))) +    
     theme_classic() + 
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
