@@ -48,7 +48,7 @@ rbge_map <- get_googlemap("Royal Botanic Gardens Edinburgh", zoom = 16, maptype 
     scale_color_manual(values = c("#5EA8D9", "#CC168F", "green", "#EEC900"),
                        name = "Invasion type") +
     scale_shape_manual(values = c(17, 15, 18, 16), name = "Invasion type") +
-    ylab("Latititude (°)") +
+    ylab("Latitude (°)") +
     xlab("Longitude (°)") +
     theme(legend.position = c(0.85, 0.87),
           legend.key = element_rect(fill = "white", color = "white"),
@@ -112,30 +112,6 @@ ggsave("rbge_map_with_names.jpg", names_map, path = "Plots", units = "cm",
 
 #Edinburgh map: ----
 edinburgh_map <- get_googlemap("Edinburgh", zoom = 12, maptype = "satellite")
-
-(edi_10zoom <- ggmap(edinburgh_map) +
-    geom_point(data = NULL, aes(x = -3.209664, y = 55.965140), color = "red", 
-               size = 3, shape = 17) +
-    theme_void() +
-    annotation_north_arrow(location = "tl", which_north = "true", 
-                           style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                                   line_col = 'white',
-                                                                   fill = 'white'),
-                          height = unit(1.5, "cm")))
-ggsave("edi_map(10).jpg", edi_10zoom, path = "Plots", units = "cm", 
-       width = 20, height = 20)
-
-
-(edi_11zoom <- ggmap(edinburgh_map) +
-    geom_point(data = NULL, aes(x = -3.209664, y = 55.965140), color = "red", 
-                                        size = 3, shape = 17) +
-    theme_void() +
-    annotation_north_arrow(location = "tl", which_north = "true", 
-                           style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                                   line_col = 'white',
-                                                                   fill = 'white')))
-ggsave("edi_map(11).jpg", edi_11zoom, path = "Plots", units = "cm", 
-       width = 20, height = 20)
 
 (edi_12zoom <- ggmap(edinburgh_map) +
     geom_point(data = NULL, aes(x = -3.209664, y = 55.965140), color = "red", 
