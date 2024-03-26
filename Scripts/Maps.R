@@ -154,6 +154,7 @@ ggsave("scotland_map.jpg", scotland, path = "Plots", units = "cm",
 
 #Grids ----
 map_grid <- grid.arrange(scotland, edi_12zoom, ncol = 2)
-ggsave("scotland_map_grid.jpg", map_grid, path = "Plots", units = "cm",
+ggsave("scotland_map_grid.jpg", map_grid,
+       path = "Plots", units = "cm",
        width = 30, height = 15)
 
