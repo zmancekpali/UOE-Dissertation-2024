@@ -24,6 +24,7 @@ library(gridExtra)
 library(lme4)
 library(MASS)
 library(multcomp)
+library(rstatix)
 library(stats)
 library(tidyverse)
 library(vegan)
@@ -100,7 +101,7 @@ head(cn_nns)
 lma_mod <- lm(lma ~ type, data = nns)
 autoplot(lma_mod)
 shapiro.test(resid(lma_mod)) #residuals not distributed normally
-bartlett.test(lma ~ type, data = nns) #homoscedascity
+bartlett.test(lma ~ type, data = nns) #heteroscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
 lma_boxcox <- boxcox(lma ~ 1, data = nns) #the λ is the highest point on the curve
@@ -110,10 +111,19 @@ nns <- nns %>% mutate(transformed_lma = (lma ^ (lma_lambda - 1)) / lma_lambda) #
 lma_mod_trans <- lm(transformed_lma ~ type, data = nns)
 autoplot(lma_mod_trans)
 shapiro.test(resid(lma_mod_trans)) #residuals not distributed normally
-bartlett.test(transformed_lma ~ type, data = nns) #homoscedascity
+bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
 (lma_kw <- kruskal.test(lma ~ type, data = nns)) #p-value = 0.0005229; significant
+
+(lma_kruskal <- nns %>% kruskal_test(lma ~ type)) #n = 196; df = 2
+(lma_effect <- nns %>% kruskal_effsize(lma ~ type)) #effect size = 0.0679; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.0679
+#this value indicates the % of variance in the dependent variable (lma) explained by the invasion status
+#so this explains 6.79% of the variance in LMA
+#M. T. Tomczak and Tomczak 2014: Tomczak, Maciej T., and Ewa Tomczak. 2014. “The Need to 
+#Report Effect Size Estimates Revisited. an Overview of Some Recommended Measures of Effect Size.” 
+#Trends in SportSciences
 
 (lma_boxplot <- ggplot(nns, 
                        aes(x = factor(type, levels = c('Native', 'Naturalised', 'Invasive')), #reorders the types 
@@ -122,23 +132,27 @@ bartlett.test(transformed_lma ~ type, data = nns) #homoscedascity
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
     labs(x = "\n Invasion status", 
-         y = expression(atop("LMA (g/cm"^2*")"))) + 
+         y = expression(atop("LMA (g cm"^-2*")"))) + 
     theme_classic() + 
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = , "cm"), 
           legend.position = "none") +
+    ggbetweenstats(nns, "lma", "type", type = "nonparametric",
+                   p.adjust.method = "bonferroni",
+                   ggsignif.args = list(textsize = 5)))
+
+    
+    
     geom_signif(comparisons = list(c("Native", "Invasive"),
                                    c("Invasive", "Naturalised")),
                 map_signif_level = TRUE,
                 y_position = c(160, 140)))
 
-ggsave("lma_boxplot.jpg", lma_boxplot, path = "Plots", units = "cm", width = 20, height = 15) 
+ggsave("lma_boxplot1.jpg", lma_boxplot, path = "Plots", units = "cm", width = 20, height = 15) 
 
 #Dunn post-hoc test
-dunn_lma <- dunn.test(nns$lma, nns$type, method = "bonferroni") #invasives differ significantly from natives yay
-#naturalised also differ significantly from natives
-
+(dunn_lma1 <- nns %>% dunn_test(lma ~ type, p.adjust.method = "bonferroni")) 
 
 #Average chlorophyll ----
 chl_mod <- lm(chl ~ type, data = nns)
@@ -379,8 +393,7 @@ bartlett.test(transformed_lma2 ~ type, data = trees) #heteroscedascity
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
-                                 "Naturalised" = "#EEC900", "C. bullatus" = "steelblue3",
-                                 "R. pseudoacacia semperflorens" = "steelblue3")) + #colours each boxplot this particular colour
+                                 "Naturalised" = "#EEC900", "C. bullatus" = "steelblue3")) +
     labs(x = "\n Invasion status", 
          y = expression(atop("LMA (g/cm"^2*")"))) + 
     theme_classic() + 
@@ -829,21 +842,36 @@ anosim(diss_matrix_chem, cn_nns$type, permutations = 9999)
 phys_subset <- nns %>% select(A, E, g, type)
 morph_subset <- nns %>% select(lma, ldcm, type)
 chem_subset <- cn_nns %>% select(c_n, type)
-morphological_subset <- morph_subset[1:nrow(chemical), ]
-physiological_subset <- phys_subset[1:nrow(chemical), ] #subsetting the physiological and morphological
-#data to match the number of columns in chemical (because there were 2 samples each in chemical, as opposed to 3 for the other two)
-#this is done randomly, just as the chemical traits samples were
 
-combined_tree_data <- cbind(physiological_subset, morphological_subset)
-combined_tree_data$type <- as.factor(combined_tree_data$type)
+combined_tree_data <- cbind(phys_subset, morph_subset)
+combined_tree_data$type <- factor(combined_tree_data$type)
 combined_tree_data_no_type <- combined_tree_data[, !names(combined_tree_data) %in% c("type")] #removes type as a variable; unnecesary for the PCA
-scaled_data <- scale(combined_tree_data) #scaling; important for a PCA
-(pca_result <- prcomp(scaled_data, scale. = TRUE))
+
+
+subset_data <- combined_tree_data[, c(1:3, 5:6)]
+scaled_data <- scale(subset_data)
+combined_tree_data_scaled[, c(1:3, 5:6)] <- scaled_data
+
+pca_result <- prcomp(combined_tree_data_scaled, scale. = TRUE)
+
+(pca_result <- prcomp(combined_tree_data_scaled, scale. = TRUE))
+pca_df <- as.data.frame(pca_result$x)
+pca_df$type <- combined_tree_data$type  # Assuming 'type' is a column in combined_tree_data
+type_colors <- c("Native" = "#698B69", "Naturalised" = "#EEC900", "Invasive" = "#CD6090")
+(plot <- biplot(pca_result, scale = 0, cex = 0.7) +
+  scale_color_manual(values = type_colors))
+
+pca_result <- prcomp(combined_tree_data_scaled, scale. = TRUE)
+pca_df <- as.data.frame(pca_result$x)
+pca_df$type <- combined_tree_data$type  # Assuming 'type' is a column in combined_tree_data
+type_colors <- c("Native" = "#698B69", "Naturalised" = "#EEC900", "Invasive" = "#CD6090")
+biplot(pca_result, scale = 0, cex = 0.7, col = type_colors[pca_df$type])
+
 
 #plotting the PCA
 pc_scores <- as.data.frame(pca_result$x)
 rotation_matrix <- as.data.frame(pca_result$rotation) #extract rotation matrix (loadings)
-biplot(pca_result, scale = 0, cex = 0.7)
+biplot(pca_result, scale = 0, cex = 0.7, col = type)
 #Direction of Arrows: The direction of the arrows represents the relationship between the original variables and the principal components. Arrows that point in similar directions indicate positive correlations between the variables and the principal components, while arrows pointing in opposite directions indicate negative correlations.
 #Length of Arrows: The length of the arrows represents the importance or weight of each variable in defining the principal components. Longer arrows indicate variables that have a greater influence on the principal components.
 #Angle between Arrows: The angle between arrows indicates the correlation (or lack thereof) between the corresponding variables. Arrows that are perpendicular (at a right angle) to each other are uncorrelated with each other. In your case, if the arrows for variables A and E are at a right angle, it suggests that these variables are uncorrelated in the dataset.
@@ -855,12 +883,35 @@ biplot(pca_result, scale = 0, cex = 0.7)
 
 type_colors <- c("Native" = "#698B69", "Naturalised" = "#EEC900", "Invasive" = "#CD6090")
 pca_df <- data.frame(pc_scores[, 1:2], type = combined_tree_data$type)
+pca_loadings <- pca_result$rotation[, 1:2]
+loadings_df <- data.frame(PC1 = rep(0, nrow(pca_loadings)),
+                          PC2 = rep(0, nrow(pca_loadings)),
+                          xend = pca_loadings[, 1],
+                          yend = pca_loadings[, 2])
+ggplot(pca_df, aes(PC1, PC2, color = type)) +
+  geom_point(size = 3) +
+  geom_segment(data = loadings_df,
+               aes(x = PC1, y = PC2, xend = xend, yend = yend),
+               arrow = arrow(length = unit(0.2, "inches")),
+               color = "black", alpha = 0.5) +
+  scale_color_manual(values = type_colors, breaks = levels(combined_tree_data$type)) +
+  theme_classic() +
+  labs(x = "PC1", y = "PC2", color = "Type")
+
+# Plot the PCA biplot with colored observations and PCA arrows
+ggplot(pca_df, aes(PC1, PC2, color = type)) +
+  geom_point(size = 3) +
+  geom_segment(x = 0, y = 0, xend = pca_loadings[, 1], yend = pca_loadings[, 2],
+               arrow = arrow(length = unit(0.2, "inches")), color = "black", alpha = 0.5) +
+  scale_color_manual(values = type_colors, breaks = levels(combined_tree_data$type)) +
+  theme_classic() +
+  labs(x = "PC1", y = "PC2", color = "Type")
 
 # Plot the PCA biplot with colored observations using ggplot2
 ggplot(pca_df, aes(PC1, PC2, color = type)) +
   geom_point(size = 3) +
   scale_color_manual(values = type_colors, breaks = levels(combined_tree_data$type)) +
-  theme_minimal() +
+  theme_classic() +
   labs(x = "PC1", y = "PC2", color = "Type")
 
 
