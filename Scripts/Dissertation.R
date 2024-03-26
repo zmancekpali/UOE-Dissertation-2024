@@ -20,7 +20,6 @@ library(ggfortify)
 library(ggpubr)
 library(ggrepel)
 library(ggsignif)
-library(ggstatsplot)
 library(gridExtra)
 library(lme4)
 library(MASS)
@@ -63,7 +62,7 @@ nns <- trees %>%
   summarise(unique_species = n_distinct(code)))
 #1 invasive, 12 naturalised, 20 native
 
-traits.palette <- c("#CD6090", "#698B69", "#EEC900")    #defining 3 colours
+traits.palette <- c("Invasive" = "#CD6090", "Native" = "#698B69", "Naturalised" = "#EEC900")    #defining 3 colours
 traits.palette2 <- c("#CD6090", "#698B69", "#EEC900", "#5EA8D9", "#245C82", "#4A3E87", "#5A5DC7")
 
 cn_trees <- read.csv("Data/cn_analysis.csv")
@@ -126,6 +125,22 @@ bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
 #Report Effect Size Estimates Revisited. an Overview of Some Recommended Measures of Effect Size.” 
 #Trends in SportSciences
 
+#Dunn post-hoc test
+(dunn_lma1 <- nns %>% dunn_test(lma ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
+
+(res_kruskal_lma1 <- nns %>% kruskal_test(lma ~ type))
+
+my_comparisons <- list(c("Native, Naturalised"), c("Native, Invasive"))
+
+(lma_ggpubr <- ggboxplot(data = nns, x = "type", y = "lma", fill = "type", 
+                         bxp.errorbar = TRUE, bxp.errorbar.width = 0.15,
+                         legend = "none",
+                         xlab = "\n Invasion status") +
+                         labs(y = bquote("LMA (g cm"^{-2}*")")) +
+    stat_compare_means(method = "kruskal.test", label.y = 160) +        # Add global anova p-value
+    scale_fill_manual(values = traits.palette))
+
 (lma_boxplot <- ggplot(nns, 
                        aes(x = factor(type, levels = c('Native', 'Naturalised', 'Invasive')), #reorders the types 
                            y = lma, fill = type)) + 
@@ -139,21 +154,17 @@ bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = , "cm"), 
           legend.position = "none") +
-    ggbetweenstats(nns, "lma", "type", type = "nonparametric",
-                   p.adjust.method = "bonferroni",
-                   ggsignif.args = list(textsize = 5)))
+    stat_compare_means(method = "kruskal.test"))
 
-    
-    
+
     geom_signif(comparisons = list(c("Native", "Invasive"),
                                    c("Invasive", "Naturalised")),
                 map_signif_level = TRUE,
+                test = "kruskal",
                 y_position = c(160, 140)))
 
 ggsave("lma_boxplot1.jpg", lma_boxplot, path = "Plots", units = "cm", width = 20, height = 15) 
 
-#Dunn post-hoc test
-(dunn_lma1 <- nns %>% dunn_test(lma ~ type, p.adjust.method = "bonferroni")) 
 
 #Average chlorophyll ----
 chl_mod <- lm(chl ~ type, data = nns)
@@ -174,6 +185,19 @@ bartlett.test(transformed_chl ~ type, data = nns) #heteroscedascity
 #Transformation did not work, moving on to non-parametric alternative:
 kruskal.test(chl ~ type, data = nns) #0.0003969; significant
 
+(chl_kruskal <- nns %>% kruskal_test(chl ~ type)) #n = 196; df = 2
+(chl_effect <- nns %>% kruskal_effsize(chl ~ type)) #effect size = 0.0708; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.0708
+#this value indicates the % of variance in the dependent variable (lma) explained by the invasion status
+#so this explains 7.08% of the variance in LMA
+#M. T. Tomczak and Tomczak 2014: Tomczak, Maciej T., and Ewa Tomczak. 2014. “The Need to 
+#Report Effect Size Estimates Revisited. an Overview of Some Recommended Measures of Effect Size.” 
+#Trends in SportSciences
+
+#Dunn post-hoc test
+(dunn_chl1 <- nns %>% dunn_test(chl ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
+
 (chl_boxplot <- ggplot(nns, 
                        aes(x = factor(type, levels = c('Native', 'Naturalised', 'Invasive')), #reorders the types 
                            y = chl, fill = type)) + 
@@ -186,7 +210,31 @@ kruskal.test(chl ~ type, data = nns) #0.0003969; significant
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = , "cm"), 
-          legend.position = "none"))
+          legend.position = "none") +
+    geom_signif(comparisons = list(c("Native", "Invasive"),
+                                   c("Native", "Naturalised")),
+                map_signif_level = TRUE,
+                y_position = c(75, 70)))
+
+
+(chl_boxplot <- ggplot(nns, 
+                       aes(x = factor(type, levels = c('Native', 'Naturalised', 'Invasive')), #reorders the types 
+                           y = lma, fill = type)) + 
+    geom_boxplot() + #creates the boxplot
+    stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
+    scale_fill_manual(values = traits.palette) + 
+    labs(x = "\n Invasion status", 
+         y = expression(atop("LMA (g cm"^-2*")"))) + 
+    theme_classic() + 
+    theme(axis.text = element_text(size = 10), 
+          axis.title = element_text(size = 11), 
+          plot.margin = unit(c(0.5,0.5,0.5,0.5), units = , "cm"), 
+          legend.position = "none") +
+    geom_signif(comparisons = list(c("Native", "Invasive"),
+                                   c("Invasive", "Naturalised")),
+                map_signif_level = TRUE,
+                y_position = c(160, 140)))
+
 
 ggsave("chl_boxplot.jpg", chl_boxplot, path = "Plots", units = "cm", width = 20, height = 15) 
 
@@ -383,22 +431,34 @@ shapiro.test(resid(lma_mod_trans2)) #residuals not distributed normally
 bartlett.test(transformed_lma2 ~ type, data = trees) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(lma_kw2 <- kruskal.test(lma ~ type, data = trees)) #p-value = 6.645e-05; significant
+(lma_kw2 <- kruskal.test(lma ~ type, data = trees)) #p-value = 1.909e-05; significant
+
+(lma_kruskal2 <- trees %>% kruskal_test(lma ~ type)) #n = 202; df = 3
+(lma_effect2 <- trees %>% kruskal_effsize(lma ~ type)) #effect size = 0.109; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.109
+#this value indicates the % of variance in the dependent variable (lma) explained by the invasion status
+#so this explains 10.9% of the variance in LMA
+#M. T. Tomczak and Tomczak 2014: Tomczak, Maciej T., and Ewa Tomczak. 2014. “The Need to 
+#Report Effect Size Estimates Revisited. an Overview of Some Recommended Measures of Effect Size.” 
+#Trends in SportSciences
+
+#Dunn post-hoc test
+(dunn_lma2 <- trees %>% dunn_test(lma ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
 
 (lma_boxplot2 <- ggplot(trees, 
                        aes(x = factor(code_two, levels = 
                                         c('Native', 'Naturalised', 'Invasive', 
-                                          'C. bullatus', 
-                                          'R. pseudoacacia semperflorens')), #reorders the types 
+                                          'C. bullatus')), #reorders the types 
                            y = lma, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
-                                 "Naturalised" = "#EEC900", "C. bullatus" = "steelblue3")) +
+                                 "Naturalised" = "#EEC900", "C. bullatus" = "#5EA8D9")) +
     labs(x = "\n Invasion status", 
-         y = expression(atop("LMA (g/cm"^2*")"))) + 
+         y = expression(atop("LMA (g cm"^-2*")"))) + 
     theme_classic() + 
-    theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic", "italic")),  # Italicize selected names
+    theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic")),  # Italicize selected names
           axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = "cm")) +
@@ -406,10 +466,6 @@ bartlett.test(transformed_lma2 ~ type, data = trees) #heteroscedascity
 
 ggsave("lma_boxplot2.jpg", lma_boxplot2, path = "Plots", units = "cm", width = 25, height = 12) 
 
-
-#Dunn post-hoc test
-dunn_lma_2 <- dunn.test(trees$lma, trees$code_two, method = "bonferroni") 
-#C. bullatus differs significantly from native species; RPS does not
 
 #Average chlorophyll ----
 chl_mod2 <- lm(chl ~ code_two, data = trees)
@@ -428,24 +484,35 @@ shapiro.test(resid(chl_mod_trans2)) #residuals not distributed normally
 bartlett.test(transformed_chl2 ~ type, data = trees) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(chl_kw2 <- kruskal.test(chl ~ type, data = trees)) #p-value = 0.001421; significant
+(chl_kw2 <- kruskal.test(chl ~ code_two, data = trees)) #p-value = 1.587e-05; significant
+
+(chl_kruskal2 <- trees %>% kruskal_test(chl ~ code_two)) #n = 202; df = 3
+(chl_effect2 <- trees %>% kruskal_effsize(chl ~ code_two)) #effect size = 0.111; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.111
+#this value indicates the % of variance in the dependent variable (lma) explained by the invasion status
+#so this explains 11.1% of the variance in LMA
+#M. T. Tomczak and Tomczak 2014: Tomczak, Maciej T., and Ewa Tomczak. 2014. “The Need to 
+#Report Effect Size Estimates Revisited. an Overview of Some Recommended Measures of Effect Size.” 
+#Trends in SportSciences
+
+#Dunn post-hoc test
+(dunn_chl2 <- trees %>% dunn_test(chl ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
 
 
 (chl_boxplot2 <- ggplot(trees, 
                         aes(x = factor(code_two, levels = 
                                          c('Native', 'Naturalised', 'Invasive', 
-                                           'C. bullatus',
-                                           'R. pseudoacacia semperflorens')), #reorders the types 
+                                           'C. bullatus')), #reorders the types 
                             y = chl, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
-                                 "Naturalised" = "#EEC900", "C. bullatus" = "steelblue3",
-                                 "R. pseudoacacia semperflorens" = "steelblue3")) + #colours each boxplot this particular colour
+                                 "Naturalised" = "#EEC900", "C. bullatus" = "#5EA8D9")) + #colours each boxplot this particular colour
     labs(x = "\n Invasion status", 
          y = expression(atop("Average chlorophyll (SPAD)"))) + 
     theme_classic() + 
-    theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic", "italic")),  # Italicize selected names
+    theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic")),  # Italicize selected names
           axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = "cm")) +
@@ -454,33 +521,30 @@ bartlett.test(transformed_chl2 ~ type, data = trees) #heteroscedascity
 ggsave("chl_boxplot2.jpg", chl_boxplot2, path = "Plots", units = "cm", width = 25, height = 12) 
 
 
-#Dunn post-hoc test
-dunn_chl_2 <- dunn.test(trees$chl, trees$code_two, method = "bonferroni") #invasives differ significantly from natives yay
-#CB and RPS differ significantly from natives and naturalised (RPS also from invasive)
-
 #LDCM ----
 ldcm_mod2 <- lm(ldcm ~ code_two, data = trees)
 autoplot(ldcm_mod2)
 shapiro.test(resid(ldcm_mod2)) #residuals distributed normally
 bartlett.test(ldcm ~ code_two, data = trees) #homoscedascity
-anova(ldcm_mod2)
-#significant, p = 0.00016
+(anova_ldmc <- anova(ldcm_mod2))
+#significant, p = 0.00249; df = 3; 
+TukeyHSD(anova_ldmc)
+tukey_results <- TukeyHSD(anova_ldmc)
+
 
 (ldcm_boxplot2 <- ggplot(trees, 
                         aes(x = factor(code_two, levels = 
                                          c('Native', 'Naturalised', 'Invasive', 
-                                           'C. bullatus',
-                                           'R. pseudoacacia semperflorens')), #reorders the types 
+                                           'C. bullatus')), #reorders the types 
                             y = ldcm, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
-                                 "Naturalised" = "#EEC900", "C. bullatus" = "steelblue3",
-                                 "R. pseudoacacia semperflorens" = "steelblue3")) + #colours each boxplot this particular colour
+                                 "Naturalised" = "#EEC900", "C. bullatus" = "#5EA8D9")) + #colours each boxplot this particular colour
     labs(x = "\n Invasion status", 
          y = expression(atop(paste("Leaf dry matter concentration (g" ~ "g"^-1~")")))) +
     theme_classic() + 
-    theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic", "italic")),  # Italicize selected names
+    theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic")),  # Italicize selected names
           axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = "cm")) +
@@ -488,10 +552,6 @@ anova(ldcm_mod2)
 
 ggsave("ldcm_boxplot2.jpg", ldcm_boxplot2, path = "Plots", units = "cm", width = 25, height = 12) 
 
-
-#Dunn post-hoc test
-dunn_ldcm_2 <- dunn.test(trees$ldcm, trees$code_two, method = "bonferroni") #invasives differ significantly from natives yay
-#neither of the alien species differ significantly from the natives
 
 
 #Assimilation rate ----
@@ -524,10 +584,6 @@ anova(a_mod2)
 
 ggsave("a_boxplot2.jpg", a_boxplot2, path = "Plots", units = "cm", width = 25, height = 12) 
 
-
-#Dunn post-hoc test
-dunn_a_2 <- dunn.test(trees$A, trees$code_two, method = "bonferroni") #invasives differ significantly from natives yay
-#neither of the alien species differ significantly from the natives
 
 
 #Evapotranspiration rate ----
