@@ -90,7 +90,6 @@ cn_nns <- cn_trees %>%
     group_by(type) %>%
     summarise(unique_species = n_distinct(code)))
 
-
 #Exploration
 head(nns)
 str(nns)
@@ -925,24 +924,24 @@ anosim(diss_matrix_chem, merged_data$code_two.x, permutations = 9999)
 
 
 #PCA in progress (badly and sadly) ---- 
-phys_subset <- nns %>% select(A, E, g, type)
-morph_subset <- nns %>% select(lma, ldcm, type)
+phys_subset <- trees %>% select(A, E, g, type)
+morph_subset <- trees %>% select(lma, ldcm, type)
 
-merged_data <- merge(cn_trees, nns, by = c("code", "canopy_pos"))
-chem_subset <- merged_data %>% select(c_n, chl, code_two.x)
+cn_trees_renamed <- cn_trees %>% rename(type_cn = type)
+merged_data <- merged_data <- merge(cn_trees, nns, by = c("code", "canopy_pos"))
+chemical_pca <- merged_data %>% select(c_n, chl, type.x)
 
-combined_tree_data <- cbind(phys_subset, morph_subset)
+combined_tree_data <- merge(phys_subset, morph_subset, by = "type")
+combined_tree_data <- merge(combined_tree_data, chemical_pca, by = "type")
+
 combined_tree_data$type <- factor(combined_tree_data$type)
 combined_tree_data_no_type <- combined_tree_data[, !names(combined_tree_data) %in% c("type")] #removes type as a variable; unnecesary for the PCA
 
 
 subset_data <- combined_tree_data[, c(1:3, 5:6)]
 scaled_data <- scale(subset_data)
-combined_tree_data_scaled[, c(1:3, 5:6)] <- scaled_data
 
-pca_result <- prcomp(combined_tree_data_scaled, scale. = TRUE)
-
-(pca_result <- prcomp(combined_tree_data_scaled, scale. = TRUE))
+(pca_result <- prcomp(scaled_data, scale. = TRUE))
 pca_df <- as.data.frame(pca_result$x)
 pca_df$type <- combined_tree_data$type  # Assuming 'type' is a column in combined_tree_data
 type_colors <- c("Native" = "#698B69", "Naturalised" = "#EEC900", "Invasive" = "#CD6090")
