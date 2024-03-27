@@ -25,6 +25,7 @@ library(lme4)
 library(MASS)
 library(multcomp)
 library(rstatix)
+library(sjPlot)
 library(stats)
 library(tidyverse)
 library(vegan)
@@ -37,7 +38,6 @@ trees <- trees %>%
                              "U" = "Upper")) %>%  #recode canopy positions from abbreviations
   mutate(code_two = recode(code_two,
                            "CB" = "C. bullatus")) %>% #recode alien species names
-  filter(A >= 0) %>% 
   arrange(code_two = factor(type, levels = c('Native', 'Naturalised', 'Invasive', 
                                              'C. bullatus'))) #rearranges the categories in this order
 
@@ -68,7 +68,7 @@ traits.palette2 <- c("#CD6090", "#698B69", "#EEC900", "#5EA8D9", "#245C82", "#4A
 cn_trees <- read.csv("Data/cn_analysis.csv")
 cn_trees <- cn_trees %>% 
   mutate(canopy_pos = recode(canopy_pos, 
-                             "L" = "Lower",
+                             "M" = "Lower",
                              "U" = "Upper")) %>%  #recode canopy positions from abbreviations
   mutate(code_two = recode(code_two,
                            "CB" = "C. bullatus")) %>% #recode alien species names
@@ -81,7 +81,7 @@ cn_trees$age <- as.numeric(cn_trees$age)
 cn_nns <- cn_trees %>% 
   filter(type %in% c('Native', 'Naturalised', "Invasive")) %>% #excluding the alien group for initial analysis
   mutate(canopy_pos = recode(canopy_pos, 
-                             "L" = "Lower",
+                             "M" = "Lower",
                              "U" = "Upper")) %>%  #recode canopy positions from abbreviations
   arrange(type = factor(type, levels = c('Native', 'Naturalised', 'Invasive'))) %>%   #rearranges the categories in this order
   mutate(c_n = C/N)
@@ -115,6 +115,13 @@ bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
 (lma_kw <- kruskal.test(lma ~ type, data = nns)) #p-value = 0.0005229; significant
+
+mod_glm_lma <- glm(lma ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees, family = "gaussian")
+summary(mod_glm_lma) #AIC = 1781.8
+
+mod_glm_lma2 <- glm(lma ~ type + ever_dec, data = trees, family = Gamma(link = "log"))
+summary(mod_glm_lma2) #AIC = 1742.7
+
 
 (lma_kruskal <- nns %>% kruskal_test(lma ~ type)) #n = 196; df = 2
 (lma_effect <- nns %>% kruskal_effsize(lma ~ type)) #effect size = 0.0679; moderate magnitude
@@ -742,6 +749,10 @@ AIC(null_lma, model_lma, model_lma_1, model_lma_2, model_lma_3)
 #using model 2 (simplest of the two)
 #so for model_lma_2; there is still 9.382 residual std that is not explained by any of these random effects
 
+plot_model(model_lma_3, type="re",
+           vline.color="#A9A9A9", dot.size=1.5,
+           show.values=T, value.offset=.1)
+
 #Chl LMER ----
 null_chl <- lm(chl ~ 1, data = nns)
 model_chl_1 <- lmer(chl ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns)
@@ -796,6 +807,8 @@ model_cn_3 <- lmer(c_n ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | 
 AIC(null_cn, model_cn_1, model_cn_2, model_cn_3)
 #all models are virtually the same; will use 1 (simplest of the three)
 #2.304 residual unexplained variance
+
+
 
 
 
