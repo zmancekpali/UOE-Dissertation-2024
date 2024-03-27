@@ -68,7 +68,7 @@ traits.palette2 <- c("#CD6090", "#698B69", "#EEC900", "#5EA8D9", "#245C82", "#4A
 cn_trees <- read.csv("Data/cn_analysis.csv")
 cn_trees <- cn_trees %>% 
   mutate(canopy_pos = recode(canopy_pos, 
-                             "L" = "Lower",
+                             "M" = "Lower",
                              "U" = "Upper")) %>%  #recode canopy positions from abbreviations
   mutate(code_two = recode(code_two,
                            "CB" = "C. bullatus")) %>% #recode alien species names
@@ -913,12 +913,13 @@ anosim(diss_matrix_chem, merged_data$code_two.x, permutations = 9999)
 #PCA in progress (badly and sadly) ---- 
 phys_subset <- trees %>% select(A, E, g, type)
 morph_subset <- trees %>% select(lma, ldcm, type)
-chem_subset1 <- cn_trees %>% select(c_n, type)
-chem_subset2 <- trees %>% select(chl, type)
+
+cn_trees_renamed <- cn_trees %>% rename(type_cn = type)
+merged_data <- merged_data <- merge(cn_trees, nns, by = c("code", "canopy_pos"))
+chemical_pca <- merged_data %>% select(c_n, chl, type.x)
 
 combined_tree_data <- merge(phys_subset, morph_subset, by = "type")
-combined_tree_data <- merge(combined_tree_data, chem_subset1, by = "type")
-combined_tree_data <- merge(combined_tree_data, chem_subset2, by = "type")
+combined_tree_data <- merge(combined_tree_data, chemical_pca, by = "type")
 
 combined_tree_data$type <- factor(combined_tree_data$type)
 combined_tree_data_no_type <- combined_tree_data[, !names(combined_tree_data) %in% c("type")] #removes type as a variable; unnecesary for the PCA
