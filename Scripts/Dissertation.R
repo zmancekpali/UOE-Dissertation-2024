@@ -556,10 +556,23 @@ ggsave("ldcm_boxplot2.jpg", ldcm_boxplot2, path = "Plots", units = "cm", width =
 
 
 #Assimilation rate ----
-a_mod2 <- lm(A ~ code_two, data = trees)
+
+#remove dead leaves first (two rows of data; n = 202):
+trees_phys <- trees %>% 
+  mutate(canopy_pos = recode(canopy_pos, 
+                             "L" = "Lower",
+                             "U" = "Upper")) %>%  #recode canopy positions from abbreviations
+  mutate(code_two = recode(code_two,
+                           "CB" = "C. bullatus")) %>% #recode alien species names
+  arrange(code_two = factor(type, levels = c('Native', 'Naturalised', 'Invasive', 
+                                             'C. bullatus'))) %>% #rearranges the categories in this order
+  filter(A >= 0) #removed negative A values (they were dead leaves)
+
+
+a_mod2 <- lm(A ~ code_two, data = trees_phys)
 autoplot(a_mod2)
-shapiro.test(resid(a_mod2)) #residuals distributed normally (barely)
-bartlett.test(A ~ code_two, data = trees) #heteroscedascity (just barely)
+shapiro.test(resid(a_mod2)) #residuals distributed normally
+bartlett.test(A ~ type, data = trees_phys) #homoscedascity
 anova_a <- aov(a_mod2)
 anova(a_mod2)#p = 0.003221
 
@@ -567,7 +580,7 @@ TukeyHSD(anova_a)
 #invasive and CB differ significantly; invasive and native differ significantly; CB and native do not differ
 #naturalised and invasive differ significantly; naturalised and native do not
 
-(a_boxplot2 <- ggplot(trees, 
+(a_boxplot2 <- ggplot(trees_phys, 
                       aes(x = factor(code_two, levels = 
                                        c('Native', 'Naturalised', 'Invasive', 
                                          'C. bullatus')), #reorders the types 
@@ -590,13 +603,13 @@ ggsave("a_boxplot2.jpg", a_boxplot2, path = "Plots", units = "cm", width = 25, h
 
 
 #Transpiration rate ----
-e_mod2 <- lm(E ~ code_two, data = trees)
+e_mod2 <- lm(E ~ code_two, data = trees_phys)
 autoplot(e_mod2)
 shapiro.test(resid(e_mod2)) #residuals distributed normally
-bartlett.test(E ~ code_two, data = trees) #homoscedascity
+bartlett.test(E ~ code_two, data = trees_phys) #homoscedascity
 anova(e_mod2) #NS; p-value = 0.8722
 
-(e_boxplot2 <- ggplot(trees, 
+(e_boxplot2 <- ggplot(trees_phys, 
                       aes(x = factor(code_two, levels = 
                                        c('Native', 'Naturalised', 'Invasive', 
                                          'C. bullatus',
@@ -622,26 +635,26 @@ ggsave("e_boxplot2.jpg", e_boxplot2, path = "Plots", units = "cm", width = 25, h
 
 
 #GH2O ----
-g_mod2 <- lm(g ~ code_two, data = trees)
+g_mod2 <- lm(g ~ code_two, data = trees_phys)
 autoplot(g_mod2)
 shapiro.test(resid(g_mod2)) #residuals not distributed normally
-bartlett.test(g ~ code_two, data = trees) #homoscedascity
+bartlett.test(g ~ code_two, data = trees_phys) #homoscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
-g_boxcox2 <- boxcox(g ~ 1, data = trees) #the λ is the highest point on the curve
+g_boxcox2 <- boxcox(g ~ 1, data = trees_phys) #the λ is the highest point on the curve
 (g_lambda2 <- g_boxcox2$x[which.max(g_boxcox2$y)]) #λ = -0.5454545
-trees <- trees %>% mutate(transformed_g2 = (g ^ (g_lambda2 - 1)) / g_lambda2) #Box-Cox transformation applied in a new column
+trees_phys <- trees_phys %>% mutate(transformed_g2 = (g ^ (g_lambda2 - 1)) / g_lambda2) #Box-Cox transformation applied in a new column
 
-g_mod_trans2 <- lm(transformed_g2 ~ type, data = trees)
+g_mod_trans2 <- lm(transformed_g2 ~ type, data = trees_phys)
 autoplot(g_mod_trans2)
 shapiro.test(resid(g_mod_trans2)) #residuals not distributed normally
-bartlett.test(transformed_g2 ~ type, data = trees) #heteroscedascity
+bartlett.test(transformed_g2 ~ type, data = trees_phys) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(g_kw2 <- kruskal.test(g ~ code_two, data = trees)) #p-value = 0.0003655; significant
+(g_kw2 <- kruskal.test(g ~ code_two, data = trees_phys)) #p-value = 0.0003655; significant
 
-(g_kruskal2 <- trees %>% kruskal_test(g ~ code_two)) #n = 202; df = 3
-(g_effect2 <- trees %>% kruskal_effsize(g ~ code_two)) #effect size = 0.0777; moderate magnitude
+(g_kruskal2 <- trees_phys %>% kruskal_test(g ~ code_two)) #n = 202; df = 3
+(g_effect2 <- trees_phys %>% kruskal_effsize(g ~ code_two)) #effect size = 0.0777; moderate magnitude
 #report as: moderate effect size is detected, eta2[H] = 0.0777
 #this value indicates the % of variance in the dependent variable (lma) explained by the invasion status
 #so this explains 7.77% of the variance in LMA
@@ -650,11 +663,11 @@ bartlett.test(transformed_g2 ~ type, data = trees) #heteroscedascity
 #Trends in SportSciences
 
 #Dunn post-hoc test
-(dunn_g2 <- trees %>% dunn_test(g ~ code_two, p.adjust.method = "bonferroni") %>% 
+(dunn_g2 <- trees_phys %>% dunn_test(g ~ code_two, p.adjust.method = "bonferroni") %>% 
     add_xy_position(x = "type")) 
 
 
-(g_boxplot2 <- ggplot(trees, 
+(g_boxplot2 <- ggplot(trees_phys, 
                       aes(x = factor(code_two, levels = 
                                        c('Native', 'Naturalised', 'Invasive', 
                                          'C. bullatus')), #reorders the types 
@@ -745,27 +758,40 @@ plot(lma_glm2)
 ad.test(residuals(lma_glm2)) #p = 0.13; normally distributed errors
 
 AIC(lma_null_glm, lma_glm, lma_glm2) #lma_glm2 is most parsimonious
+
 summary(lma_glm2)
-#overdispersion test: residual deviance/df = 3.5666/169 = 0.02; not dispersed (bc < 2)
-#RP tends to have a higher LMA than natives and naturalised (as does CB)
-#The positive coefficient (0.0251) indicates that, on average, invasive species have higher LMA)c
-#ompared to the reference group. This suggests that invasive species may invest more in leaf structural components, resulting in higher LMA.
+#overdispersion test: residual deviance/df = 0.02072451; not overdispersed (bc < 2)
+#RP tends to have a higher LMA than natives and naturalised
+#This suggests that invasive species may invest more in leaf structural components, resulting in higher LMA.
+#tree age has a significant effect on LMA (older trees = lower lma)
+#higher dbh = higher lma
+#upper leaves and evergreen leaves have higher LMA (boxplot only; model disagrees)
 
-#the additional data also explain some of the differences we see in the data: The model suggests that 
-#invasion status, as well as other factors such as tree age, diameter at breast height, deciduousness, 
-#species code, and canopy position, are important predictors of LMA variation.
-  #some interspecies variation is present
-boxplot(lma ~ code, data = trees) #ilex aquifolium stands out at highest LMA
-boxplot(lma ~ canopy_pos, data = trees) #ilex aquifolium stands out at highest LMA
-#older trees tend to have slightly lower lma
-#larger dbh = slightly larger lma
-#evergreen species tend to have lower lma
-#trees in the upper canopy have lower lma values
+plot(lma ~ dbh, data = trees)
+plot(lma ~ age, data = trees)
+boxplot(lma ~ ever_dec, data = trees)
+boxplot(lma ~ canopy_pos, data = trees)
 
-#read about interaction terms also -> see if they are necessary
+#some interspecific variation in LMA present; 
+(interspecific_lma <- ggplot(trees, aes(x = code, y = lma, fill = type)) +
+    geom_boxplot() +
+    theme_classic() +
+    ylab(bquote("LMA (g cm"^{-2}*")")) +
+    xlab("Species") +
+    scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
+                                 "Naturalised" = "#EEC900", "Alien" = "#5EA8D9",
+                                 name = "Invasion type")) +  #colours each boxplot this particular colour)
+    theme(legend.position = c(0.95, 0.95),
+          legend.key = element_rect(fill = "white", color = "white"),
+          legend.background = element_rect(fill = "white", color = "white"),
+          legend.key.size = unit(1.5, "line"),
+          legend.title=element_blank()))
+
+ggsave("interspecific_lma_variation.jpg", interspecific_lma, path = "Plots", 
+       width = 30, height = 12)
+
 
 #Chl GLM---
-plot(A ~ n, data = merged_data)
 
 #A GLM---
 
