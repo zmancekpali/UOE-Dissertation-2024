@@ -767,6 +767,7 @@ boxplot(lma ~ canopy_pos, data = trees) #ilex aquifolium stands out at highest L
 #read about interaction terms also -> see if they are necessary
 
 #Chl GLM---
+plot(A  ,ata = merged_data)
 
 #A GLM---
 
