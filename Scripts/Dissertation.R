@@ -304,7 +304,7 @@ dunn_ldmc <- dunn.test(nns$ldcm, nns$type, method = "bonferroni") #invasive diff
 #naturalised and natives show no significant difference
 
 
-#Evapotransiration rate ----
+#Transiration rate ----
 e_mod <- lm(E ~ type, data = nns)
 autoplot(e_mod)
 shapiro.test(resid(e_mod)) #residuals distributed normally
@@ -589,7 +589,7 @@ ggsave("a_boxplot2.jpg", a_boxplot2, path = "Plots", units = "cm", width = 25, h
 
 
 
-#Evapotranspiration rate ----
+#Transpiration rate ----
 e_mod2 <- lm(E ~ code_two, data = trees)
 autoplot(e_mod2)
 shapiro.test(resid(e_mod2)) #residuals distributed normally
@@ -607,7 +607,7 @@ anova(e_mod2) #NS; p-value = 0.8722
     scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
                                  "Naturalised" = "#EEC900", "C. bullatus" = "#5EA8D9")) + #colours each boxplot this particular colour
     labs(x = "\n Invasion status", 
-         y = expression(atop(paste("Evapotranspiration rate (", mu, "mol H"[2]*"O m"^-2*~"s"^-1, ")")))) +
+         y = expression(atop(paste("Evapotranspiration rate (", mu, "mol CO"[2]*"m"^-2*~"s"^-1, ")")))) +
     theme_classic() + 
     theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic")),  # Italicize selected names
           axis.text = element_text(size = 10), 
@@ -664,7 +664,7 @@ bartlett.test(transformed_g2 ~ type, data = trees) #heteroscedascity
     scale_fill_manual(values = c("Invasive" = "#CD6090", "Native" = "#698B69",
                                  "Naturalised" = "#EEC900", "C. bullatus" = "#5EA8D9")) + #colours each boxplot this particular colour
     labs(x = "\n Invasion status", 
-         y = expression(atop(paste("Stomatal conductance rate (", mu, "mol H"[2]*"O m"^-2*~"s"^-1, ")")))) +
+         y = expression(atop(paste("Stomatal conductance rate (", mu, "mol CO"[2]*"m"^-2*~"s"^-1, ")")))) +
     theme_classic() + 
     theme(axis.text.x = element_text(face = c("plain", "plain", "plain", "italic")),  # Italicize selected names
           axis.text = element_text(size = 10), 
@@ -730,8 +730,6 @@ bartlett.test(transformed_cn2 ~ code_two, data = cn_trees) #heteroscedascity
 ggsave("cn_boxplot2.jpg", cn_boxplot2, path = "Plots", units = "cm", width = 25, height = 12) 
 
 
-
-
 #Step 3 - GLMs for random effects ----
 
 #LMA GLM
@@ -767,7 +765,7 @@ boxplot(lma ~ canopy_pos, data = trees) #ilex aquifolium stands out at highest L
 #read about interaction terms also -> see if they are necessary
 
 #Chl GLM---
-plot(A  ,ata = merged_data)
+plot(A ~ n, data = merged_data)
 
 #A GLM---
 
