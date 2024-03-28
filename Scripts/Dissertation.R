@@ -13,6 +13,7 @@ getwd() #check that it's worked
 
 #Libraries
 library(ape)
+library(car)
 library(cowplot)
 library(dunn.test)
 library(e1071)
@@ -22,8 +23,10 @@ library(ggrepel)
 library(ggsignif)
 library(gridExtra)
 library(lme4)
+library(lmtest)
 library(MASS)
 library(multcomp)
+library(nortest)
 library(rstatix)
 library(sjPlot)
 library(stats)
@@ -114,13 +117,6 @@ bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
 (lma_kw <- kruskal.test(lma ~ type, data = nns)) #p-value = 0.0005229; significant
-
-mod_glm_lma <- glm(lma ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees, family = "gaussian")
-summary(mod_glm_lma) #AIC = 1781.8
-
-mod_glm_lma2 <- glm(lma ~ type + ever_dec, data = trees, family = Gamma(link = "log"))
-summary(mod_glm_lma2) #AIC = 1742.7
-
 
 (lma_kruskal <- nns %>% kruskal_test(lma ~ type)) #n = 196; df = 2
 (lma_effect <- nns %>% kruskal_effsize(lma ~ type)) #effect size = 0.0679; moderate magnitude
@@ -736,76 +732,51 @@ ggsave("cn_boxplot2.jpg", cn_boxplot2, path = "Plots", units = "cm", width = 25,
 
 
 
-#Step 3 - Mixed effect models?? ----
-#LMA LMER ----
-null_lma <- lm(lma ~ 1, data = nns)
-model_lma <- lmer(lma ~ type + (1 | ever_dec), data = nns)
-model_lma_1 <- lmer(lma ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns) 
-model_lma_2 <- lmer(lma ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = nns)
-model_lma_3 <- lmer(lma ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = nns)
-AIC(null_lma, model_lma, model_lma_1, model_lma_2, model_lma_3)
-#models 2 and 3 fall within 2 AIC scores; so virtually identical fit to the data
-#using model 2 (simplest of the two)
-#so for model_lma_2; there is still 9.382 residual std that is not explained by any of these random effects
+#Step 3 - GLMs for random effects ----
 
-plot_model(model_lma_3, type="re",
-           vline.color="#A9A9A9", dot.size=1.5,
-           show.values=T, value.offset=.1)
+#LMA GLM
+lma_null_glm <- glm(lma ~ 1, data = trees, family = 'gaussian')
+lma_glm <- glm(lma ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees, family = "gaussian") #basic glm
+plot(lma_glm)
+ad.test(residuals(lma_glm)) #p = 0.09; normally distributed errors
 
-#Chl LMER ----
-null_chl <- lm(chl ~ 1, data = nns)
-model_chl_1 <- lmer(chl ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns)
-model_chl_2 <- lmer(chl ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = nns)
-model_chl_3 <- lmer(chl ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = nns)
-AIC(null_chl, model_chl_1, model_chl_2, model_chl_3)
-#Models 1 and 2 fall within two AIC scores, so i'll use 1 (simplest)
-#3.572 residual std that isn't explained by the rest of the variables
+hist(trees$lma) #a little skewed, lets try a transformation to account for that
+lma_glm2 <- glm(lma ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees, family = Gamma(link = "inverse")) #default gamma distribution link
+#used the gamma distribution because the outcome (lma) is continuous but non-normal
+plot(lma_glm2) 
+ad.test(residuals(lma_glm2)) #p = 0.13; normally distributed errors
 
-#A LMER ----
-null_a <- lm(A ~ 1, data = nns)
-model_a_1 <- lmer(A ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns)
-model_a_2 <- lmer(A ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = nns)
-model_a_3 <- lmer(A ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = nns)
-AIC(null_a, model_a_1, model_a_2, model_a_3)
-#models 2 and 3 are the same; will use 2 (simplest of the two)
-#1.67752 residual unexplained variance
+AIC(lma_null_glm, lma_glm, lma_glm2) #lma_glm2 is most parsimonious
+summary(lma_glm2)
+#overdispersion test: residual deviance/df = 3.5666/169 = 0.02; not dispersed (bc < 2)
+#RP tends to have a higher LMA than natives and naturalised (as does CB)
+#The positive coefficient (0.0251) indicates that, on average, invasive species have higher LMA)c
+#ompared to the reference group. This suggests that invasive species may invest more in leaf structural components, resulting in higher LMA.
 
-#LDMC LMER ----
-null_ldmc <- lm(ldcm ~ 1, data = nns)
-model_ldmc_1 <- lmer(ldcm ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns)
-model_ldmc_2 <- lmer(ldcm ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = nns)
-model_ldmc_3 <- lmer(ldcm ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = nns)
-AIC(null_ldmc, model_ldmc_1, model_ldmc_2, model_ldmc_3)
-#models 2 and 3 are virtually identical, so will use 2 (simplest)
-#0.061836 residual unexplained variance
+#the additional data also explain some of the differences we see in the data: The model suggests that 
+#invasion status, as well as other factors such as tree age, diameter at breast height, deciduousness, 
+#species code, and canopy position, are important predictors of LMA variation.
+  #some interspecies variation is present
+boxplot(lma ~ code, data = trees) #ilex aquifolium stands out at highest LMA
+boxplot(lma ~ canopy_pos, data = trees) #ilex aquifolium stands out at highest LMA
+#older trees tend to have slightly lower lma
+#larger dbh = slightly larger lma
+#evergreen species tend to have lower lma
+#trees in the upper canopy have lower lma values
 
-#E LMER ----
-null_e <- lm(E ~ 1, data = nns)
-model_e_1 <- lmer(E ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns)
-model_e_2 <- lmer(E ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = nns)
-model_e_3 <- lmer(E ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = nns)
-AIC(null_e, model_e_1, model_e_2, model_e_3)
-#models 1, 2, and 3 are the same; will use 1 (simplest of the three)
-#1.2015 residual unexplained variance
+#read about interaction terms also -> see if they are necessary
 
-#GH2O LMER ----
-null_g <- lm(g ~ 1, data = nns)
-model_g_1 <- lmer(g ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = nns)
-model_g_2 <- lmer(g ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = nns)
-model_g_3 <- lmer(g ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = nns)
-AIC(null_g, model_g_1, model_g_2, model_g_3)
-#models 1 and 2 are the same; will use 1 (simplest of the two)
-#11.171 residual unexplained variance
+#Chl GLM---
 
+#A GLM---
 
-#C:N LMER ----
-null_cn <- lm(c_n ~ 1, data = cn_nns)
-model_cn_1 <- lmer(c_n ~ type + (1 | code) + (1 | age) +  (1 | ever_dec), data = cn_nns)
-model_cn_2 <- lmer(c_n ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos), data = cn_nns)
-model_cn_3 <- lmer(c_n ~ type + (1 | code) + (1 | age) +  (1 | ever_dec) + (1 | canopy_pos) + (1 | dbh), data = cn_nns)
-AIC(null_cn, model_cn_1, model_cn_2, model_cn_3)
-#all models are virtually the same; will use 1 (simplest of the three)
-#2.304 residual unexplained variance
+#LDMC GLM--
+
+#E GLM--
+
+#GH2O GLM---
+
+#C:N GLM---
 
 
 
