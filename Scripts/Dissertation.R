@@ -163,7 +163,7 @@ my_comparisons <- list(c("Native, Naturalised"), c("Native, Invasive"))
                                    c("Invasive", "Naturalised")),
                 map_signif_level = TRUE,
                 test = "kruskal",
-                y_position = c(160, 140)))
+                y_position = c(160, 140))
 
 ggsave("lma_boxplot1.jpg", lma_boxplot, path = "Plots", units = "cm", width = 20, height = 15) 
 
@@ -745,34 +745,28 @@ ggsave("cn_boxplot2.jpg", cn_boxplot2, path = "Plots", units = "cm", width = 25,
 
 #Step 3 - GLMs for random effects ----
 
-#LMA GLM
-lma_null_glm <- glm(lma ~ 1, data = trees, family = 'gaussian')
-lma_glm <- glm(lma ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees, family = "gaussian") #basic glm
-plot(lma_glm)
-ad.test(residuals(lma_glm)) #p = 0.09; normally distributed errors
+#LMA LM ----
+hist(trees$lma) #looks normal-ish; slightly skewwed
+shapiro_test(trees$lma) #non-normal
 
-hist(trees$lma) #a little skewed, lets try a transformation to account for that
-lma_glm2 <- glm(lma ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees, family = Gamma(link = "inverse")) #default gamma distribution link
-#used the gamma distribution because the outcome (lma) is continuous but non-normal
-plot(lma_glm2) 
-ad.test(residuals(lma_glm2)) #p = 0.13; normally distributed errors
+#trying a log-transformation
+hist(log(trees$lma)) #normal
+shapiro_test(log(trees$lma)) #normal
 
-AIC(lma_null_glm, lma_glm, lma_glm2) #lma_glm2 is most parsimonious
+lma_lm_null <- lm(log(lma) ~ 1, data = trees)
+lma_lm1 <- lm(log(lma) ~ type, data = trees)
+plot(lma_lm1)
+ad.test(residuals(lma_lm1)) #p = 0.14; normally distributed errors
+lma_lm2 <- lm(log(lma) ~ type + age + dbh + ever_dec + code + canopy_pos, data = trees)
+plot(lma_lm2)
+ad.test(residuals(lma_lm2)) #p = 0.08; normally distributed errors
+#both of these are ok for the data
 
-summary(lma_glm2)
-#overdispersion test: residual deviance/df = 0.02072451; not overdispersed (bc < 2)
-#RP tends to have a higher LMA than natives and naturalised
-#This suggests that invasive species may invest more in leaf structural components, resulting in higher LMA.
-#tree age has a significant effect on LMA (older trees = lower lma)
-#higher dbh = higher lma
-#upper leaves and evergreen leaves have higher LMA (boxplot only; model disagrees)
-
-plot(lma ~ dbh, data = trees)
-plot(lma ~ age, data = trees)
-boxplot(lma ~ ever_dec, data = trees)
-boxplot(lma ~ canopy_pos, data = trees)
-
-#some interspecific variation in LMA present; 
+#see which model is most parismoius
+AIC(lma_lm_null, lma_lm1, lma_lm2) #lma_lm2 is most parsimonious
+summary(lma_lm2)
+#we can see a significant effect of age, dbh, light, and decidousness on LMA
+#as well as some interspecific variation
 (interspecific_lma <- ggplot(trees, aes(x = code, y = lma, fill = type)) +
     geom_boxplot() +
     theme_classic() +
@@ -791,7 +785,65 @@ ggsave("interspecific_lma_variation.jpg", interspecific_lma, path = "Plots",
        width = 30, height = 12)
 
 
-#Chl GLM---
+#Chl GLM ----
+hist(trees$chl) #looks normal
+shapiro_test(trees$chl) #non-normal
+
+#trying a log-transformation
+hist(log(trees$chl)) #looks normal
+shapiro_test(log(trees$chl)) #non-normal
+
+#inverse
+hist(1/trees$chl) #looks normal
+shapiro_test(1/trees$chl) #non-normal
+
+#sqrt
+hist(sqrt(trees$chl)) #looks normal
+shapiro_test(sqrt(trees$chl)) #non-normal
+
+chl_lm_null_reg <- lm(chl ~ 1, data = trees)
+chl_lm1_reg <- lm(chl ~ type, data = trees)
+plot(chl_lm1_reg)
+ad.test(residuals(chl_lm1_reg)) #p = 0.0004; normally distributed errors
+
+chl_lm_null <- lm(log(chl) ~ 1, data = trees)
+chl_lm1 <- lm(log(chl) ~ type, data = trees)
+plot(chl_lm1)
+ad.test(residuals(chl_lm1)) #p = 0.008; non-normally distributed errors
+
+chl_lm_null_sqrt <- lm(sqrt(chl) ~ 1, data = trees)
+chl_lm1_sqrt <- lm(sqrt(chl) ~ type, data = trees)
+plot(chl_lm1_sqrt)
+ad.test(residuals(chl_lm1_sqrt)) #p = 0.006; normally distributed errors
+
+chl_lm2 <- lm(chl ~ type + age + ever_dec + canopy_pos, data = trees)
+plot(chl_lm2)
+ad.test(residuals(chl_lm2)) #p = 0.27; normally distributed errors
+
+#none of them worked, so glm it is
+chl_null_glm <- glm(chl ~ 1, data = trees, family = 'gaussian')
+chl_glm <- glm(lma ~ type + age + ever_dec + canopy_pos, data = trees, family = "gaussian") #basic glm
+plot(chl_glm)
+ad.test(residuals(chl_glm)) #p = 0.0005; non-normally distributed errors
+
+chl_glm2 <- glm(chl ~ type + age + ever_dec + canopy_pos, data = trees, family = Gamma(link = "inverse")) #default gamma distribution link
+#used the gamma distribution because the outcome (chl) is continuous but non-normal
+plot(chl_glm2) 
+ad.test(residuals(chl_glm2)) #p = 0.03; non-normally distributed errors; not to be used
+
+AIC(chl_lm_null_reg, chl_lm1_reg, chl_lm_null, chl_lm1, chl_lm_null_sqrt, 
+    chl_lm1_sqrt, chl_lm2, chl_null_glm, chl_glm) 
+#chl_lm1 <- lm(log(chl) ~ type, data = trees) is best
+#additional variables don't explain the variation in the data
+
+
+summary(lma_glm2)
+#overdispersion test: residual deviance/df = 0.02072451; not overdispersed (bc < 2)
+#RP tends to have a higher LMA than natives and naturalised
+#This suggests that invasive species may invest more in leaf structural components, resulting in higher LMA.
+#tree age has a significant effect on LMA (older trees = lower lma)
+#higher dbh = higher lma
+#upper leaves and evergreen leaves have higher LMA (boxplot only; model disagrees)
 
 #A GLM---
 
