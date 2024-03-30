@@ -15,6 +15,7 @@ getwd() #check that it's worked
 library(ape)
 library(cowplot)
 library(dunn.test)
+library(ellipse)
 library(e1071)
 library(ggfortify)
 library(ggpubr)
@@ -777,7 +778,7 @@ summary(lma_lm2)
           legend.key = element_rect(fill = "white", color = "white"),
           legend.background = element_rect(fill = "white", color = "white"),
           legend.key.size = unit(1.5, "line"),
-          legend.title=element_blank()))
+          legend.title = element_blank()))
 
 ggsave("interspecific_lma_variation.jpg", interspecific_lma, path = "Plots", 
        width = 30, height = 12)
@@ -970,29 +971,43 @@ anosim(diss_matrix_chem, merged_data$code_two.x, permutations = 9999)
 
 
 #PCA in progress (badly and sadly) ---- 
-phys_subset <- trees %>% select(A, E, g, type)
-morph_subset <- trees %>% select(lma, ldcm, type)
+merged_trees <- merge(trees, cn_trees[, c("code", "canopy_pos", "c_n")], by = c("code", "canopy_pos"))
+combined_tree_data_numeric <- merged_trees %>%
+  select(chl, lma, ldcm, A, E, g, c_n)
+combined_tree_data$type_numeric <- as.numeric(combined_tree_data$type)
 
-cn_trees_renamed <- cn_trees %>% rename(type_cn = type)
-merged_data <- merged_data <- merge(cn_trees, nns, by = c("code", "canopy_pos"))
-chemical_pca <- merged_data %>% select(c_n, chl, type.x)
-
-combined_tree_data <- merge(phys_subset, morph_subset, by = "type")
-combined_tree_data <- merge(combined_tree_data, chemical_pca, by = "type")
-
-combined_tree_data$type <- factor(combined_tree_data$type)
-combined_tree_data_no_type <- combined_tree_data[, !names(combined_tree_data) %in% c("type")] #removes type as a variable; unnecesary for the PCA
+merged_trees %>%
+    group_by(type) %>%
+    summarise(unique_species = n_distinct(code))
 
 
-subset_data <- combined_tree_data[, c(1:3, 5:6)]
-scaled_data <- scale(subset_data)
+scaled_data <- scale(combined_tree_data_numeric)
 
 (pca_result <- prcomp(scaled_data, scale. = TRUE))
 pca_df <- as.data.frame(pca_result$x)
-pca_df$type <- combined_tree_data$type  # Assuming 'type' is a column in combined_tree_data
-type_colors <- c("Native" = "#698B69", "Naturalised" = "#EEC900", "Invasive" = "#CD6090")
-(plot <- biplot(pca_result, scale = 0, cex = 0.7) +
-  scale_color_manual(values = type_colors))
+pca_df$type <- merged_trees$type  # Assuming 'type' is a column in combined_tree_data
+type_colors <- c("Native" = "#698B69", "Naturalised" = "#EEC900", "Invasive" = "#CD6090", "Alien" = "#5EA8D9")
+(plot <- biplot(pca_result, scale = 0, cex = 0.7))
+
+loadings <- pca_result$rotation
+variance_explained <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+
+arrows_df <- data.frame(
+  PC1 = loadings[, 1] * sqrt(variance_explained[1]),
+  PC2 = loadings[, 2] * sqrt(variance_explained[2])
+)
+
+(pca_plot <- ggbiplot(pca_df, obs.scale = 1, var.scale = 1) +
+    ggtitle("PCA Biplot") +
+    scale_color_manual(values = type_colors) +
+    geom_point(aes(color = type), size = 3) +  # Color points by 'type'
+    theme_classic() +
+    theme(legend.position = c(0.9, 0.2),
+          legend.background = element_rect(fill = "white", color = "black"),
+          legend.key.size = unit(1.5, "line"),
+          legend.title = element_blank()))
+  
+plot <- ggbiplot(pca_result, choices = c(1, 2), scale = 0, labels = rownames(pca_result$rotation))
 
 pca_result <- prcomp(combined_tree_data_scaled, scale. = TRUE)
 pca_df <- as.data.frame(pca_result$x)
