@@ -13,7 +13,6 @@ getwd() #check that it's worked
 
 #Libraries
 library(ape)
-library(car)
 library(cowplot)
 library(dunn.test)
 library(e1071)
