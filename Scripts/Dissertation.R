@@ -70,10 +70,10 @@ traits.palette2 <- c("#CD6090", "#698B69", "#EEC900", "#5EA8D9", "#245C82", "#4A
 
 cn_trees <- read.csv("Data/cn_analysis.csv")
 cn_trees <- cn_trees %>% 
-  mutate(canopy_pos = recode(canopy_pos, 
+  dplyr::mutate(canopy_pos = recode(canopy_pos, 
                              "M" = "Lower",
-                             "U" = "Upper")) %>%  #recode canopy positions from abbreviations
-  mutate(code_two = recode(code_two,
+                             "U" = "Upper"), #recode canopy positions
+         code_two = recode(code_two,
                            "CB" = "C. bullatus")) %>% #recode alien species names
   arrange(code_two = factor(type, levels = c('Native', 'Naturalised', 'Invasive', 
                                              'C. bullatus'))) %>% #rearranges the categories in this order
@@ -744,7 +744,6 @@ ggsave("cn_boxplot2.jpg", cn_boxplot2, path = "Plots", units = "cm", width = 25,
 
 
 #Step 3 - GLMs for random effects ----
-
 #LMA LM ----
 hist(trees$lma) #looks normal-ish; slightly skewwed
 shapiro_test(trees$lma) #non-normal
