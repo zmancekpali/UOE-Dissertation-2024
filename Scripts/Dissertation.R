@@ -15,12 +15,14 @@ getwd() #check that it's worked
 library(ape)
 library(cowplot)
 library(dunn.test)
+library(ecodist)
 library(ellipse)
 library(e1071)
 library(ggfortify)
 library(ggpubr)
 library(ggrepel)
 library(ggsignif)
+library(goeveg)
 library(gridExtra)
 library(lme4)
 library(lmtest)
@@ -32,6 +34,7 @@ library(sjPlot)
 library(stats)
 library(tidyverse)
 library(vegan)
+library(vegan3d)
 
 #Data
 trees <- read.csv("Data/traits_analysis2.csv")
@@ -43,6 +46,9 @@ trees <- trees %>%
                            "CB" = "C. bullatus")) %>% #recode alien species names
   arrange(code_two = factor(type, levels = c('Native', 'Naturalised', 'Invasive', 
                                              'C. bullatus'))) #rearranges the categories in this order
+
+trees_pos <- trees %>% 
+  filter(A >= 0)
 
 trees$age <- as.numeric(trees$age)
 
@@ -860,13 +866,167 @@ summary(lma_glm2)
 
 
 
-#NMDS----
+#NMDS (nns) ----
+merged_trees_nns <- merge(nns, cn_nns[, c("code", "canopy_pos", "c_n")], by = c("code", "canopy_pos"))
+
+numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns, is.numeric)] 
+numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
+numeric_data_nns <- numeric_data_nns %>% select(chl, lma, ldcm, A, E, g, c_n)
+
+#finding the lowest stress for up to 6 dimensions:
+dimcheckMDS(numeric_data_nns,
+            distance = "euclidean",
+            k = 6) #goeveg package
+#generally accepted that stress < 0.2 is a fair fit for ordination, so will use 
+#3 dimensions here (to reduce stress but also increase interpretability)
+
+#2-dimensional NMDS (nns)----
+nmds_nns <- metaMDS(numeric_data_nns, distance = "euclidean") #2 dimensions, stress = 0.2114154
+nmds_coords_nns <- as.data.frame(scores(nmds_nns, "sites"))
+nmds_coords_nns$type <- merged_trees_nns$type
+
+plot(nmds_nns, type = "t") #base r NMDS plot
+stressplot(nmds_nns) #stressplot; linear R^2 = 0.825; non-linear R^2 = 0.955
+
+gof_nns <- goodness(nmds_nns)
+plot(nmds_nns, typ = "t", main = "goodness of fit")
+points(nmds_nns, display = "sites", cex = gof_nns * 100)
+
+fit_nns <- envfit(nmds_nns, numeric_data_nns, permu = 999) #environmental variables
+
+plot(nmds_nns, display = "sites")
+plot(fit_nns, p.max = 0.05) #The arrow(s) point to the direction of most rapid change in 
+#the environmental variable. Often this is called the direction of the gradient.
+#The length of the arrow(s) is proportional to the correlation between ordination and environmental variable. 
+#often this is called the strength of the gradient.
+
+(stress_nns <- nmds_nns$stress)
+goodness(object = nmds_nns)
+plot(nmds_nns$diss, nmds_nns$dist)
+plot(vegdist(numeric_data_nns), dist(scores(nmds_nns, "sites")))
+
+#ggplot NMDS
+hull.data <- data.frame()
+for (i in unique(nmds_coords_nns$type)) {
+  temp <- nmds_coords_nns[nmds_coords_nns$type == i, ][chull(nmds_coords_nns[nmds_coords_nns$type == i, c("NMDS1", "NMDS2")]), ]
+  hull.data <- rbind(hull.data, temp)
+}
+
+(nmds_nns_plot <- ggplot() +
+    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
+    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.8) + #add polygons for invasive type
+    geom_point(data = nmds_coords_nns, aes(x = NMDS1, y = NMDS2, color = type), size = 3) + # Add points
+    scale_color_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900")) +
+    scale_fill_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900")) +
+    theme_classic() +
+    theme(legend.position = c(0.9, 0.9), legend.direction = "vertical", legend.title = element_blank()) +
+    labs(title = "NMDS Plot of Leaf Traits by Invasion Type"))
+ggsave("combined_nmds_nns.jpg", nmds_nns, path = "Plots", units = "cm", 
+       width = 20, height = 20) 
+
+diss_matrix_nns <- vegdist(numeric_data_nns, method = "euclidean")
+anosim(diss_matrix_nns, merged_trees_nns$type, permutations = 9999) 
+#significant (1e-04), the three types are significantly different in their traits;
+#however, the R value is close to 0 (0.0949), indicating a slight but significant difference between the groups
+
+#3-dimensional NMDS (nns) ----
+nmds_nns3 <- metaMDS(numeric_data_nns, distance = "euclidean", k = 3) #3 dimensions, stress = 0.2114154
+nmds_coords_nns3 <- as.data.frame(scores(nmds_nns3, "sites"))
+nmds_coords_nns3$type <- merged_trees_nns$type
+
+plot(nmds_nns3, type = "t") #base r NMDS plot
+stressplot(nmds_nns3) #stressplot; linear R^2 = 0.883; non-linear R^2 = 0.981
+
+gof_nns3 <- goodness(nmds_nns3)
+plot(nmds_nns3, typ = "t", main = "goodness of fit")
+points(nmds_nns3, display = "sites", cex = gof_nns3 * 100)
+
+(stress_nns3 <- nmds_nns3$stress) #0.1382597
+goodness(object = nmds_nns3)
+plot(nmds_nns3$diss, nmds_nns3$dist)
+
+#ggplot NMDS
+hull.data <- data.frame()
+for (i in unique(nmds_coords_nns3$type)) {
+  temp <- nmds_coords_nns3[nmds_coords_nns3$type == i, ][chull(nmds_coords_nns3[nmds_coords_nns3$type == i, c("NMDS1", "NMDS2")]), ]
+  hull.data <- rbind(hull.data, temp)
+}
+
+(nmds_nns3_plot <- ggplot() +
+    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, z = NMDS3, group = type, fill = type), alpha = 0.5) + # polygons for non-invasive types
+    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, z = NMDS3, group = type, fill = type), alpha = 0.8) + # polygons for invasive type
+    geom_point(data = nmds_coords_nns3, aes(x = NMDS1, y = NMDS2, z = NMDS3, color = type), size = 3) + # points for NMDS1, NMDS2, and NMDS3
+    scale_color_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900")) +
+    scale_fill_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900")) +
+    theme_classic() +
+    theme(legend.position = c(0.9, 0.9), legend.direction = "vertical", legend.title = element_blank()) +
+    labs(title = "NMDS Plot of Leaf Traits by Invasion Type"))
+ggsave("nmds_nns_3D.jpg", nmds_nns3_plot, path = "Plots", units = "cm", 
+       width = 20, height = 20) 
+
+diss_matrix_nns3 <- vegdist(numeric_data_nns, method = "euclidean", k = 3)
+anosim(diss_matrix_nns3, merged_trees_nns$type, permutations = 9999) 
+#significant (1e-04), the three types are significantly different in their traits;
+#however, the R value is close to 0 (0.0949), indicating a slight but significant difference between the groups
+#same as above
+
+#3d PLOT attempt
+nmdsD <- scores(nmds_nns3, choices = 1:3, display = c("species"))
+out <- ordiplot3d(nmdsD, col = "red", ax.col= "black", pch = 18)
+text(out$xyz.convert(nmdsD), rownames(nmdsD), pos = 1)
+
+#ggplot with arrows hopefully
+merged_trees_nns <- merge(nns, cn_nns[, c("code", "canopy_pos", "c_n")], by = c("code", "canopy_pos"))
+
+numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns, is.numeric)] 
+numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
+numeric_data_nns <- numeric_data_nns %>% select(chl, lma, ldcm, A, E, g, c_n)
+
+nmds_nns3 <- metaMDS(numeric_data_nns, distance = "euclidean", k = 3) #3 dimensions, stress = 0.2114154
+en = envfit(nmds, env, permutations = 999, na.rm = TRUE)
+
+
+#NMDS (with alien) ----
+merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "c_n")], by = c("code", "canopy_pos"))
+
+numeric_cols <- colnames(merged_trees)[sapply(merged_trees, is.numeric)] 
+numeric_data <- merged_trees[, numeric_cols]
+numeric_data <- numeric_data %>% select(chl, lma, ldcm, A, E, g, c_n)
+
+nmds <- metaMDS(numeric_data, distance = "euclidean") #two dimensions, stress = 0.2144952
+nmds_coords <- as.data.frame(scores(nmds, "sites"))
+nmds_coords$type <- merged_trees$type
+
+hull.data <- data.frame()
+for (i in unique(nmds_coords$type)) {
+  temp <- nmds_coords[nmds_coords$type == i, ][chull(nmds_coords[nmds_coords$type == i, c("NMDS1", "NMDS2")]), ]
+  hull.data <- rbind(hull.data, temp)
+}
+
+(nmds_plot <- ggplot() +
+    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
+    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.8) + #add polygons for invasive type
+    geom_point(data = nmds_coords, aes(x = NMDS1, y = NMDS2, color = type), size = 3) + # Add points
+    scale_color_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900", "Alien" = "#5EA8D9")) +
+    scale_fill_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900", "Alien" = "#5EA8D9")) +
+    theme_classic() +
+    theme(legend.position = c(0.9, 0.9), legend.direction = "vertical", legend.title = element_blank()) +
+    labs(title = "NMDS Plot of Leaf Traits by Invasion Type"))
+ggsave("combined_nmds.jpg", nmds, path = "Plots", units = "cm", 
+       width = 20, height = 20) 
+
+diss_matrix <- vegdist(numeric_data, method = "euclidean")
+anosim(diss_matrix, merged_trees$type, permutations = 9999) 
+#significant (1e-04), the three types are significantly different in their traits;
+#however, the R value is close to 0 (0.1405), indicating a slight but significant difference between the groups
+
+#Individual NMDSs -> not usable (stress too low) ----
 morphological <- nns %>% select(lma, ldcm)
 physiological <- nns %>% select(A, E, g)
 
 merged_data <- merge(cn_trees, nns, by = c("code", "canopy_pos"))
 chemical <- merged_data %>% select(c_n, chl)
-#Morphological NMDS (nns) ----
+#Morphological NMDS (nns)
 numeric_cols_morph <- colnames(morphological)[sapply(morphological, is.numeric)] 
 numeric_data_morph <- morphological[, numeric_cols_morph]
 numeric_data_morph <- numeric_data_morph %>% select(lma, ldcm)
@@ -898,7 +1058,7 @@ anosim(diss_matrix_morph, nns$type, permutations = 9999)
 #significant, the three types are significantly different in their morphological traits (p = 0.0362);
 #however, the R value is close to 0 (0.03814), indicating a slight but significant difference between the groups
 
-#Physiological NMDS (nns) ----
+#Physiological NMDS (nns)
 numeric_cols_phys <- colnames(physiological)[sapply(physiological, is.numeric)] 
 numeric_data_phys <- physiological[, numeric_cols_phys]
 numeric_data_phys <- numeric_data_phys %>% select(A, E, g)
@@ -931,7 +1091,7 @@ anosim(diss_matrix_phys, nns$type, permutations = 9999)
 #the R is also close to 0 (0.01142), so this relationship is insignificant and a weak difference between the groups
 
 
-#Chemical NMDS (nns) ----
+#Chemical NMDS (nns)
 numeric_cols_chem <- colnames(chemical)[sapply(chemical, is.numeric)] 
 numeric_data_chem <- chemical[, numeric_cols_chem]
 numeric_data_chem <- numeric_data_chem %>% select(c_n)
