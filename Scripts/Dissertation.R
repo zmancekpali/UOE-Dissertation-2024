@@ -74,7 +74,7 @@ nns_pos <- nns %>%
   filter(A >= 0) %>% 
   rename("LMA" = "lma") %>% 
   rename("LDMC" = "ldcm") %>% 
-  rename("Chl" = "chl")
+  rename("Chl" = "chl") %>% 
 
 (nns_counts <- nns %>%
   group_by(type) %>%
@@ -933,14 +933,14 @@ merged_trees_nns <- merge(nns_pos, cn_nmds_data[, c("code", "canopy_pos", "CN")]
 
 numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns, is.numeric)] 
 numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
-numeric_data_nns <- numeric_data_nns %>% select(Chl, LMA, LDMC, A, E, g, CN)
+numeric_data_nns <- numeric_data_nns %>% select(Chl, LMA, LDMC, A, E, g, CN, Dark_resp)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data_nns,
             distance = "euclidean",
             k = 6) #goeveg package
 #generally accepted that stress < 0.2 is a fair fit for ordination, so will use 
-#3 dimensions here (to reduce stress but also increase interpretability)
+#2 dimensions here 
 
 #2-dimensional NMDS (nns)----
 nmds_nns <- metaMDS(numeric_data_nns, distance = "euclidean") #2 dimensions, stress = 0.2114154
@@ -948,7 +948,7 @@ nmds_coords_nns <- as.data.frame(scores(nmds_nns, "sites"))
 nmds_coords_nns$type <- merged_trees_nns$type
 
 plot(nmds_nns, type = "t") #base r NMDS plot
-stressplot(nmds_nns) #stressplot; linear R^2 = 0.825; non-linear R^2 = 0.955
+stressplot(nmds_nns) #stressplot; linear R^2 = 0.98; non-linear R^2 = 0.995
 
 gof_nns <- goodness(nmds_nns)
 plot(nmds_nns, typ = "t", main = "goodness of fit")
@@ -962,7 +962,7 @@ plot(fit_nns, p.max = 0.05) #The arrow(s) point to the direction of most rapid c
 #The length of the arrow(s) is proportional to the correlation between ordination and environmental variable. 
 #often this is called the strength of the gradient.
 
-(stress_nns <- nmds_nns$stress) #0.2114154
+(stress_nns <- nmds_nns$stress) #0.0731529
 goodness(object = nmds_nns)
 plot(nmds_nns$diss, nmds_nns$dist)
 
@@ -985,8 +985,10 @@ for (i in unique(nmds_coords_nns$type)) {
 ggsave("nmds_nns_2d.jpg", nmds_nns_plot, path = "Plots", units = "cm", 
        width = 20, height = 20) 
 
+
 diss_matrix_nns <- vegdist(numeric_data_nns, method = "euclidean")
-anosim(diss_matrix_nns, merged_trees_nns$type, permutations = 9999) 
+numeric_data_nns$type <- merged_trees_nns$type
+anosim(diss_matrix_nns, numeric_data_nns$type, permutations = 9999) 
 #significant (1e-04), the three types are significantly different in their traits;
 #however, the R value is close to 0 (0.0949), indicating a slight but significant difference between the groups
 
@@ -1025,6 +1027,7 @@ en_coord_cont = as.data.frame(scores(en, "vectors")) * ordiArrowMul(en)
             fontface = "bold", label = row.names(en_coord_cont)) +
   labs(colour = "type") +
   labs(title = "NMDS Plot of Leaf Traits by Invasion Type"))
+
 
 ggsave("drivers_nmds_nns_2d.jpg", drivers_nmds, path = "Plots", units = "cm", 
        width = 20, height = 20)
@@ -1128,7 +1131,7 @@ merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "c_n")], by 
 
 numeric_cols <- colnames(merged_trees)[sapply(merged_trees, is.numeric)] 
 numeric_data <- merged_trees[, numeric_cols]
-numeric_data <- numeric_data %>% select(chl, lma, ldcm, A, E, g, c_n)
+numeric_data <- numeric_data %>% select(chl, lma, ldcm, A, E, g, c_n, Dark_resp)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data,
@@ -1350,10 +1353,13 @@ ggplot(pca_df, aes(PC1, PC2, color = type)) +
 
 
 #lucy
-pca_data <- nns %>% 
-  select(lma, ldcm, A, E, g, chl)
+merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "c_n")], by = c("code", "canopy_pos"))
 
-pca <- princomp(pca_data, cor = TRUE, scores = TRUE)
+numeric_cols <- colnames(merged_trees)[sapply(merged_trees, is.numeric)] 
+numeric_data <- merged_trees[, numeric_cols]
+numeric_data <- numeric_data %>% select(chl, lma, ldcm, A, E, g, c_n, Dark_resp)
+
+pca <- princomp(numeric_data, cor = TRUE, scores = TRUE)
 pca$loadings #pca1 explains loads -> add the scree plot and see that the comp 1 explains a lot (plot(pca))
 #lma and chl are the most important variables in the pca1; followed by g, E, and A (but the latter in the opp direction)
 #add the pca1 and pca2 to the original dataset to plot 
