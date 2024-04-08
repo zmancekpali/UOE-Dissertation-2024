@@ -206,7 +206,7 @@ en_coord_cont = as.data.frame(scores(en, "vectors")) * ordiArrowMul(en)
           panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
           axis.ticks = element_blank(), axis.text = element_blank(), legend.key = element_blank(), 
           legend.text = element_text(size = 9, colour = "grey30"),
-          legend.position = c(0.93, 0.94), legend.direction = "vertical", legend.title = element_blank()) +
+          legend.position = c(0.93, 0.92), legend.direction = "vertical", legend.title = element_blank()) +
     geom_segment(data = en_coord_cont, aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), 
                  size =1, alpha = 0.5, colour = "grey30") +
     geom_text(data = en_coord_cont, aes(x = NMDS1, y = NMDS2), colour = "black", 
