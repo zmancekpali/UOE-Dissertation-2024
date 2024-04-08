@@ -127,14 +127,14 @@ cn_nns <- cn_trees %>%
   summarise(mean_cn = mean(C/N)))
 
 #Step 1 - NMDS ----
-merged_trees_nns <- merge(nns_pos, cn_nns[, c("code", "canopy_pos", "CN")], 
+merged_trees_nns <- merge(nns_pos, cn_nns[, c("code", "canopy_pos", "N")], 
                           by = c("code", "canopy_pos"))
 
 numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns, 
                                                       is.numeric)] 
 numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
 numeric_data_nns <- numeric_data_nns %>% select(Chl, LMA, LDMC, A, 
-                                                E, g, CN, Rleaf)
+                                                E, g, N, Rleaf)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data_nns,
@@ -1022,7 +1022,6 @@ bartlett.test(transformed_cn2 ~ type, data = cn_trees) #heteroscedascity
 
 ggsave("cn_boxplot2.jpg", cn_boxplot2, path = "Plots", units = "cm",
        width = 25, height = 13) 
-
 
 #Box plots grid ----
 #These remove the x-axis tick marks, titles, and labels
