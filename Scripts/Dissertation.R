@@ -30,14 +30,11 @@ library(lmtest)
 library(MASS)
 library(multcomp)
 library(nortest)
-library(plotly)
-library(plot3D)
 library(rstatix)
 library(sjPlot)
 library(stats)
 library(tidyverse)
 library(vegan)
-library(vegan3d)
 
 #Data
 trees <- read.csv("Data/traits_analysis2.csv")
@@ -56,7 +53,7 @@ trees <- trees %>%
   rename("LMA" = "lma") %>% 
   rename("LDMC" = "ldcm") %>% 
   rename("Chl" = "chl") %>% 
-  rename("DR" = "Dark_resp")
+  rename("Rleaf" = "Dark_resp")
 
 trees_pos <- trees %>% 
   filter(A >= 0) #for physiological measurements
@@ -75,18 +72,18 @@ nns <- trees %>%
   arrange(type = factor(type, levels = c('Native', 'Naturalised', 'Invasive'))) #rearranges the categories in this order
 
 nns_pos <- nns %>% 
-  filter(A >= 0) %>% 
-  rename("LMA" = "lma") %>% 
-  rename("LDMC" = "ldcm") %>% 
-  rename("Chl" = "chl") %>% 
-  rename("DR" = "Dark_resp")
+  filter(A >= 0) 
 
 (nns_counts <- nns %>%
   group_by(type) %>%
   summarise(unique_species = n_distinct(code)))
 #1 invasive, 12 naturalised, 20 native
 
-traits.palette <- c("Invasive" = "#CD6090", "Native" = "#698B69", "Naturalised" = "#EEC900")    #defining 3 colours
+traits.palette <- c("Invasive" = "#CD6090", 
+                    "Native" = "#698B69",
+                    "Naturalised" = "#EEC900", 
+                    "C. bullatus" = "#5EA8D9")    #defining 3 colours
+
 
 cn_trees <- read.csv("Data/cn_analysis.csv")
 cn_trees <- cn_trees %>% 
@@ -137,7 +134,7 @@ numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns,
                                                       is.numeric)] 
 numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
 numeric_data_nns <- numeric_data_nns %>% select(Chl, LMA, LDMC, A, 
-                                                E, g, CN, DR)
+                                                E, g, CN, Rleaf)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data_nns,
@@ -151,7 +148,7 @@ nmds_coords_nns <- as.data.frame(scores(nmds_nns, "sites"))
 nmds_coords_nns$type <- merged_trees_nns$type
 
 plot(nmds_nns, type = "t") #base r NMDS plot
-stressplot(nmds_nns) #stressplot; linear R^2 = 0.98; non-linear R^2 = 0.995
+stressplot(nmds_nns) #stressplot; linear R^2 = 0.995; non-linear R^2 = 0.98
 (stress_nns <- nmds_nns$stress) #0.0731529
 
 #ggplot NMDS
@@ -168,8 +165,7 @@ for (i in unique(nmds_coords_nns$type)) {
     scale_color_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900")) +
     scale_fill_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090", "Naturalised" = "#EEC900")) +
     theme_classic() +
-    theme(legend.position = c(0.9, 0.9), legend.direction = "vertical", legend.title = element_blank()) +
-    labs(title = "NMDS Plot of Leaf Traits by Invasion Type"))
+    theme(legend.position = c(0.9, 0.9), legend.direction = "vertical", legend.title = element_blank()))
 ggsave("nmds_nns_2d.jpg", nmds_nns_plot, path = "Plots", units = "cm", 
        width = 20, height = 20) 
 
@@ -233,7 +229,7 @@ en
 
 
 
-#NMDS (with alien - don't know if I will use) ----
+#2-dimensional NMDS (with alien - don't know if I will use) ----
 merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by = c("code", "canopy_pos"))
 
 numeric_cols <- colnames(merged_trees)[sapply(merged_trees, is.numeric)] 
@@ -244,8 +240,7 @@ numeric_data <- numeric_data %>% select(Chl, LMA, LDMC, A, E, g, CN, DR)
 dimcheckMDS(numeric_data,
             distance = "euclidean",
             k = 6) #goeveg package
- 
-#2-dimensional NMDS (with alien) ----
+
 nmds <- metaMDS(numeric_data, distance = "euclidean", k = 2) 
 nmds_coords <- as.data.frame(scores(nmds, "sites"))
 nmds_coords$type <- merged_trees$type
@@ -367,15 +362,15 @@ en_total
 
 #Step 2: NNS boxplots + post-hoc (if applicable) ----
 #LMA ----
-lma_mod <- lm(lma ~ type, data = nns)
+lma_mod <- lm(LMA ~ type, data = nns)
 autoplot(lma_mod)
 shapiro.test(resid(lma_mod)) #residuals not distributed normally
-bartlett.test(lma ~ type, data = nns) #heteroscedascity
+bartlett.test(LMA ~ type, data = nns) #heteroscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
-lma_boxcox <- boxcox(lma ~ 1, data = nns) #the λ is the highest point on the curve
+lma_boxcox <- boxcox(LMA ~ 1, data = nns) #the λ is the highest point on the curve
 (lma_lambda <- lma_boxcox$x[which.max(lma_boxcox$y)]) #λ = -0.1818182
-nns <- nns %>% mutate(transformed_lma = (lma ^ (lma_lambda - 1)) / lma_lambda) #Box-Cox transformation applied in a new column
+nns <- nns %>% mutate(transformed_lma = (LMA ^ (lma_lambda - 1)) / lma_lambda) #Box-Cox transformation applied in a new column
 
 lma_mod_trans <- lm(transformed_lma ~ type, data = nns)
 autoplot(lma_mod_trans)
@@ -383,20 +378,20 @@ shapiro.test(resid(lma_mod_trans)) #residuals not distributed normally
 bartlett.test(transformed_lma ~ type, data = nns) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(lma_kruskal <- nns %>% kruskal_test(lma ~ type)) #n = 198; df = 2; p = 0.000542
-(lma_effect <- nns %>% kruskal_effsize(lma ~ type)) #effect size = 0.0669; moderate magnitude
-#report as: moderate effect size is detected, eta2[H] = 0.0679
+(lma_kruskal <- nns %>% kruskal_test(LMA ~ type)) #n = 198; df = 2; p = 0.000542
+(lma_effect <- nns %>% kruskal_effsize(LMA ~ type)) #effect size = 0.0669; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.0669
 #this value indicates the % of variance in the dependent variable (lma) explained by the invasion status
 #so this explains 6.69% of the variance in LMA
 
 #Dunn post-hoc test
-(dunn_lma1 <- nns %>% dunn_test(lma ~ type, p.adjust.method = "bonferroni") %>% 
+(dunn_lma1 <- nns %>% dunn_test(LMA ~ type, p.adjust.method = "bonferroni") %>% 
     add_xy_position(x = "type")) #native/invasive and native/naturalised differ significantly
 
 (lma_boxplot <- ggplot(nns, 
                        aes(x = factor(type, levels = c('Native', 'Naturalised', 
                                                        'Invasive')), #reorders the types 
-                           y = lma, fill = type)) + 
+                           y = LMA, fill = type)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
@@ -413,15 +408,15 @@ ggsave("lma_boxplot1.jpg", lma_boxplot, path = "Plots", units = "cm",
 
 
 #Average chlorophyll ----
-chl_mod <- lm(chl ~ type, data = nns)
+chl_mod <- lm(Chl ~ type, data = nns)
 autoplot(chl_mod)
 shapiro.test(resid(chl_mod)) #residuals not distributed normally
-bartlett.test(chl ~ type, data = nns) #heteroscedascity
+bartlett.test(Chl ~ type, data = nns) #heteroscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
-chl_boxcox <- boxcox(nns$chl ~ 1)
+chl_boxcox <- boxcox(nns$Chl ~ 1)
 (chl_lambda <- chl_boxcox$x[which.max(chl_boxcox$y)]) #λ = -0.1010101
-nns <- nns %>% mutate(transformed_chl = (chl ^ (chl_lambda - 1)) / chl_lambda) #Box-Cox transformation applied in a new column
+nns <- nns %>% mutate(transformed_chl = (Chl ^ (chl_lambda - 1)) / chl_lambda) #Box-Cox transformation applied in a new column
 
 chl_mod_trans <- lm(transformed_chl ~ type, data = nns)
 autoplot(chl_mod_trans)
@@ -429,21 +424,21 @@ shapiro.test(resid(chl_mod_trans)) #residuals not distributed normally
 bartlett.test(transformed_chl ~ type, data = nns) #heteroscedascity           
 
 #Transformation did not work, moving on to non-parametric alternative:
-(chl_kruskal <- nns %>% kruskal_test(chl ~ type)) #n = 198; df = 2; p = 0.00037 
-(chl_effect <- nns %>% kruskal_effsize(chl ~ type)) #effect size = 0.0708; moderate magnitude
+(chl_kruskal <- nns %>% kruskal_test(Chl ~ type)) #n = 198; df = 2; p = 0.00037 
+(chl_effect <- nns %>% kruskal_effsize(Chl ~ type)) #effect size = 0.0708; moderate magnitude
 #report as: moderate effect size is detected, eta2[H] = 0.0708
 #this value indicates the % of variance in the dependent variable (chl) explained by the invasion status
 #so this explains 7.08% of the variance in chl
 
 
 #Dunn post-hoc test
-(dunn_chl1 <- nns %>% dunn_test(chl ~ type, p.adjust.method = "bonferroni") %>% 
+(dunn_chl1 <- nns %>% dunn_test(Chl ~ type, p.adjust.method = "bonferroni") %>% 
     add_xy_position(x = "type")) #native/invasive and naturalised/invasive differ significantly
 
 (chl_boxplot <- ggplot(nns, 
                        aes(x = factor(type, levels = c('Native', 'Naturalised', 
                                                        'Invasive')), #reorders the types 
-                           y = chl, fill = type)) + 
+                           y = Chl, fill = type)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
@@ -487,10 +482,10 @@ ggsave("a_boxplot.jpg", a_boxplot, path = "Plots", units = "cm",
        width = 20, height = 15) 
 
 #LDCM ----
-ldcm_mod <- lm(ldcm ~ type, data = nns)
+ldcm_mod <- lm(LDMC ~ type, data = nns)
 autoplot(ldcm_mod)
 shapiro.test(resid(ldcm_mod)) #residuals distributed normally
-bartlett.test(ldcm ~ type, data = nns) #homoscedascity
+bartlett.test(LDMC ~ type, data = nns) #homoscedascity
 anova(ldcm_mod) #p = 0.001018; df = 2
 
 tukey_ldcm <- aov(ldcm_mod)
@@ -499,7 +494,7 @@ TukeyHSD(tukey_ldcm, conf.level = 0.95) #native/invasive and naturalised/invasiv
 (ldmc_boxplot <- ggplot(nns, 
                         aes(x = factor(type, levels = c('Native', 'Naturalised', 
                                                         'Invasive')), #reorders the types 
-                            y = ldcm, fill = type)) + 
+                            y = LDMC, fill = type)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
@@ -542,26 +537,27 @@ ggsave("e_boxplot.jpg", e_boxplot, path = "Plots", units = "cm",
        width = 20, height = 15) 
 
 #Dark respiration ----
-dr_mod <- lm(DR ~ type, data = nns_pos)
+dr_mod <- lm(Rleaf ~ type, data = nns_pos)
 autoplot(dr_mod)
 shapiro.test(resid(dr_mod)) #residuals not distributed normally
-bartlett.test(DR ~ type, data = nns_pos) #heteroscedascity (just barely)
+bartlett.test(Rleaf ~ type, data = nns_pos) #heteroscedascity (just barely)
 
 #cannot do a boxcox transformation bc values are negative       
 
-(dr_kruskal <- nns_pos %>% kruskal_test(DR ~ type)) #n = 196; df = 2; p = 0.288  
-(dr_effect <- nns_pos %>% kruskal_effsize(DR ~ type)) #effect size = 0.00253; small magnitude
+(dr_kruskal <- nns_pos %>% kruskal_test(Rleaf ~ type)) #n = 196; df = 2; p = 0.288  
+(dr_effect <- nns_pos %>% kruskal_effsize(Rleaf ~ type)) #effect size = 0.00253; small magnitude
 #report as: small effect size is detected, eta2[H] = 0.00253
+y <- expression(paste("R"[leaf], " (", mu, "mol CO"[2], "m"^-2*"s"^-1, ")"))
 
 (dr_boxplot <- ggplot(nns_pos, 
                      aes(x = factor(type, levels = c('Native', 'Naturalised', 
                                                      'Invasive')), #reorders the types 
-                         y = DR, fill = type)) + 
+                         y = Rleaf, fill = type)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
     labs(x = "\n Invasion status", 
-         y = expression(paste("DR (", mu, "mol CO"[2] ~ "m"^-2*"s"^-1, ")"))) +    
+         y = y) +    
     theme_classic() + 
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
@@ -606,7 +602,7 @@ bartlett.test(transformed_g ~ type, data = nns_pos) #homoscedascity
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = traits.palette) + 
     labs(x = "\n Invasion status", 
-         y = expression(paste("g (", mu, "mol H"[2]*"O" ~ "m"^-2*"s"^-1, ")"))) +    
+         y = expression(paste("gs (", mu, "mol H"[2]*"O" ~ "m"^-2*"s"^-1, ")"))) +    
     theme_classic() + 
     theme(axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
@@ -666,15 +662,15 @@ ggsave("cn_boxplot.jpg", cn_boxplot, path = "Plots", units = "cm",
 
 #Step 3: compare alien species ----
 #LMA ----
-lma_mod2 <- lm(lma ~ type, data = trees)
+lma_mod2 <- lm(LMA ~ type, data = trees)
 autoplot(lma_mod2)
 shapiro.test(resid(lma_mod2)) #residuals not distributed normally
-bartlett.test(lma ~ type, data = trees) #heteroscedascity
+bartlett.test(LMA ~ type, data = trees) #heteroscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
-lma_boxcox2 <- boxcox(lma ~ 1, data = trees) #the λ is the highest point on the curve
+lma_boxcox2 <- boxcox(LMA ~ 1, data = trees) #the λ is the highest point on the curve
 (lma_lambda2 <- lma_boxcox2$x[which.max(lma_boxcox2$y)]) #λ = -0.1414141
-trees <- trees %>% mutate(transformed_lma2 = (lma ^ (lma_lambda2 - 1)) / lma_lambda2) #Box-Cox transformation applied in a new column
+trees <- trees %>% mutate(transformed_lma2 = (LMA ^ (lma_lambda2 - 1)) / lma_lambda2) #Box-Cox transformation applied in a new column
 
 lma_mod_trans2 <- lm(transformed_lma2 ~ type, data = trees)
 autoplot(lma_mod_trans2)
@@ -682,12 +678,12 @@ shapiro.test(resid(lma_mod_trans2)) #residuals not distributed normally
 bartlett.test(transformed_lma2 ~ type, data = trees) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(lma_kruskal2 <- trees %>% kruskal_test(lma ~ type)) #n = 204; df = 3; p = 0.000019 
-(lma_effect2 <- trees %>% kruskal_effsize(lma ~ type)) #effect size = 0.108 ; moderate magnitude
+(lma_kruskal2 <- trees %>% kruskal_test(LMA ~ type)) #n = 204; df = 3; p = 0.000019 
+(lma_effect2 <- trees %>% kruskal_effsize(LMA ~ type)) #effect size = 0.108 ; moderate magnitude
 #report as: moderate effect size is detected, eta2[H] = 0.108 
 
 #Dunn post-hoc test
-(dunn_lma2 <- trees %>% dunn_test(lma ~ type, p.adjust.method = "bonferroni") %>% 
+(dunn_lma2 <- trees %>% dunn_test(LMA ~ type, p.adjust.method = "bonferroni") %>% 
     add_xy_position(x = "type")) 
 #alien/native and alien/naturalised differ significantly
 #invasive/native and invasive/naturalised differ significantly
@@ -696,7 +692,7 @@ bartlett.test(transformed_lma2 ~ type, data = trees) #heteroscedascity
                        aes(x = factor(code_two, levels = 
                                         c('Native', 'Naturalised', 'Invasive', 
                                           'C. bullatus')), #reorders the types 
-                           y = lma, fill = code_two)) + 
+                           y = LMA, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", 
@@ -718,16 +714,16 @@ ggsave("lma_boxplot2.jpg", lma_boxplot2, path = "Plots", units = "cm",
 
 
 #Chlorophyll ----
-chl_mod2 <- lm(chl ~ type, data = trees)
+chl_mod2 <- lm(Chl ~ type, data = trees)
 autoplot(chl_mod2)
 shapiro.test(resid(chl_mod2)) #residuals not distributed normally
-bartlett.test(chl ~ type, data = trees) #heteroscedascity
+bartlett.test(Chl ~ type, data = trees) #heteroscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
-chl_boxcox2 <- boxcox(chl ~ 1, data = trees) #the λ is the highest point on the curve
+chl_boxcox2 <- boxcox(Chl ~ 1, data = trees) #the λ is the highest point on the curve
 (chl_lambda2 <- chl_boxcox2$x[which.max(chl_boxcox2$y)]) #λ = -0.06060606
 trees <- trees %>% 
-  mutate(transformed_chl2 = (chl ^ (chl_lambda2 - 1)) / chl_lambda2) #Box-Cox transformation applied in a new column
+  mutate(transformed_chl2 = (Chl ^ (chl_lambda2 - 1)) / chl_lambda2) #Box-Cox transformation applied in a new column
 
 chl_mod_trans2 <- lm(transformed_chl2 ~ type, data = trees)
 autoplot(chl_mod_trans2)
@@ -735,12 +731,12 @@ shapiro.test(resid(chl_mod_trans2)) #residuals not distributed normally
 bartlett.test(transformed_chl2 ~ type, data = trees) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(chl_kruskal2 <- trees %>% kruskal_test(chl ~ type)) #n = 204; df = 3; p = 0.000014 
-(chl_effect2 <- trees %>% kruskal_effsize(chl ~ type)) #effect size = 0.111; moderate magnitude
+(chl_kruskal2 <- trees %>% kruskal_test(Chl ~ type)) #n = 204; df = 3; p = 0.000014 
+(chl_effect2 <- trees %>% kruskal_effsize(Chl ~ type)) #effect size = 0.111; moderate magnitude
 #report as: moderate effect size is detected, eta2[H] = 0.111
 
 #Dunn post-hoc test
-(dunn_chl2 <- trees %>% dunn_test(chl ~ type, p.adjust.method = "bonferroni") %>% 
+(dunn_chl2 <- trees %>% dunn_test(Chl ~ type, p.adjust.method = "bonferroni") %>% 
     add_xy_position(x = "type")) 
 #alien/native and alien/naturalised differ significantly
 #invasive/native and invasive/naturalised differ significantly
@@ -749,7 +745,7 @@ bartlett.test(transformed_chl2 ~ type, data = trees) #heteroscedascity
                         aes(x = factor(code_two, levels = 
                                          c('Native', 'Naturalised', 
                                            'Invasive', 'C. bullatus')), #reorders the types 
-                            y = chl, fill = code_two)) + 
+                            y = Chl, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", 
@@ -777,11 +773,11 @@ ggsave("chl_boxplot2.jpg", chl_boxplot2, path = "Plots", units = "cm",
 
 
 #LDCM ----
-ldcm_mod2 <- lm(ldcm ~ type, data = trees)
+ldcm_mod2 <- lm(LDMC ~ type, data = trees)
 autoplot(ldcm_mod2)
 shapiro.test(resid(ldcm_mod2)) #residuals distributed normally
-bartlett.test(ldcm ~ type, data = trees) #homoscedascity
-anova(ldcm_mod2) #significant, p = 0.002177; df = 3; 
+bartlett.test(LDMC ~ type, data = trees) #homoscedascity
+anova(ldcm_mod2) #significant, p = 0.002177; df = 3 
 
 anova_ldmc <- aov(ldcm_mod2)
 TukeyHSD(anova_ldmc)
@@ -792,7 +788,7 @@ TukeyHSD(anova_ldmc)
                         aes(x = factor(code_two, levels = 
                                          c('Native', 'Naturalised', 
                                            'Invasive', 'C. bullatus')), #reorders the types 
-                            y = ldcm, fill = code_two)) + 
+                            y = LDMC, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", 
@@ -888,21 +884,22 @@ ggsave("e_boxplot2.jpg", e_boxplot2, path = "Plots", units = "cm",
 
 
 #Dark respiration ----
-dr_mod2 <- lm(Dark_resp ~ code_two, data = trees_pos)
+dr_mod2 <- lm(Rleaf ~ code_two, data = trees_pos)
 autoplot(dr_mod2)
 shapiro.test(resid(dr_mod2)) #residuals not distributed normally
-bartlett.test(Dark_resp ~ type, data = trees_pos) #heteroscedascity
+bartlett.test(Rleaf ~ type, data = trees_pos) #heteroscedascity
 
 #Cannot do a Box-Cox transformation because values are negative:
-(dr_kruskal2 <- trees_pos %>% kruskal_test(Dark_resp ~ type)) #n = 202; df = 3; p = 0.437  
-(dr_effect2 <- trees_pos %>% kruskal_effsize(Dark_resp ~ type)) #effect size = -0.00142; small magnitude
+(dr_kruskal2 <- trees_pos %>% kruskal_test(Rleaf ~ type)) #n = 202; df = 3; p = 0.437  
+(dr_effect2 <- trees_pos %>% kruskal_effsize(Rleaf ~ type)) #effect size = -0.00142; small magnitude
 #report as: small effect size is detected, eta2[H] = -0.00142
 
+y <- expression(paste("R"[leaf], " (", mu, "mol CO"[2], "m"^-2*"s"^-1, ")"))
 (dr_boxplot2 <- ggplot(trees_pos, 
                       aes(x = factor(code_two, levels = 
                                        c('Native', 'Naturalised', 
                                          'Invasive', 'C. bullatus')), #reorders the types 
-                          y = Dark_resp, fill = code_two)) + 
+                          y = Rleaf, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", 
@@ -910,7 +907,7 @@ bartlett.test(Dark_resp ~ type, data = trees_pos) #heteroscedascity
                                  "Naturalised" = "#EEC900", 
                                  "C. bullatus" = "#5EA8D9")) + #colours each boxplot this particular colour
     labs(x = "\n Invasion status", 
-         y = expression(paste("DR (", mu, "mol CO"[2]~"m"^-2*~"s"^-1, ")"))) +
+         y = y) +
     theme_classic() + 
     theme(axis.text.x = element_text(face = c("plain", "plain", 
                                               "plain", "italic")),  # Italicize selected names
@@ -976,16 +973,16 @@ ggsave("g_boxplot2.jpg", g_boxplot2, path = "Plots", units = "cm",
 
 
 #C:N ----
-cn_mod2 <- lm(c_n ~ type, data = cn_trees)
+cn_mod2 <- lm(CN ~ type, data = cn_trees)
 autoplot(cn_mod2)
 shapiro.test(resid(cn_mod2)) #residuals not distributed normally
-bartlett.test(c_n ~ type, data = cn_trees) #homoscedascity
+bartlett.test(CN ~ type, data = cn_trees) #homoscedascity
 
 #Attempt mathematical transformation first to meet ANOVA assumptions:
-cn_boxcox2 <- boxcox(c_n ~ 1, data = cn_trees) #the λ is the highest point on the curve
+cn_boxcox2 <- boxcox(CN ~ 1, data = cn_trees) #the λ is the highest point on the curve
 (cn_lambda2 <- cn_boxcox2$x[which.max(cn_boxcox2$y)]) #λ = -0.7474747
 cn_trees <- cn_trees %>% 
-  mutate(transformed_cn2 = (c_n ^ (cn_lambda2 - 1)) / cn_lambda2) #Box-Cox transformation applied in a new column
+  mutate(transformed_cn2 = (CN ^ (cn_lambda2 - 1)) / cn_lambda2) #Box-Cox transformation applied in a new column
 
 cn_mod_trans2 <- lm(transformed_cn2 ~ type, data = cn_trees)
 autoplot(cn_mod_trans2)
@@ -993,12 +990,12 @@ shapiro.test(resid(cn_mod_trans2)) #residuals distributed normally
 bartlett.test(transformed_cn2 ~ type, data = cn_trees) #heteroscedascity
 
 #Transformation did not work, moving on to non-parametric alternative:
-(cn_kruskal2 <- cn_trees %>% kruskal_test(c_n ~ type)) #n = 99; df = 3; p = 0.00182 
-(cn_effect2 <- cn_trees %>% kruskal_effsize(c_n ~ type)) #effect size = 0.126 ; moderate magnitude
+(cn_kruskal2 <- cn_trees %>% kruskal_test(CN ~ type)) #n = 99; df = 3; p = 0.00182 
+(cn_effect2 <- cn_trees %>% kruskal_effsize(CN ~ type)) #effect size = 0.126 ; moderate magnitude
 #report as: moderate effect size is detected, eta2[H] = 0.126 
 
 #Dunn post-hoc test
-(dunn_cn2 <- cn_trees %>% dunn_test(c_n ~ type, p.adjust.method = "bonferroni") %>% 
+(dunn_cn2 <- cn_trees %>% dunn_test(CN ~ type, p.adjust.method = "bonferroni") %>% 
     add_xy_position(x = "type"))  
 #invasive/native differ significantly
 #invasive/alien differ significantly
@@ -1006,7 +1003,7 @@ bartlett.test(transformed_cn2 ~ type, data = cn_trees) #heteroscedascity
 (cn_boxplot2 <- ggplot(cn_trees, 
                       aes(x = factor(code_two, levels = c('Native', 'Naturalised', 
                                                           'Invasive', 'C. bullatus')), #reorders the types 
-                          y = c_n, fill = code_two)) + 
+                          y = CN, fill = code_two)) + 
     geom_boxplot() + #creates the boxplot
     stat_boxplot(geom ='errorbar', width = 0.3) + #adds the whisker ends
     scale_fill_manual(values = c("Invasive" = "#CD6090", 
