@@ -12,7 +12,9 @@ getwd() #check that it's worked
 
 #Libraries
 library(ape)
+library(caret)
 library(cowplot)
+library(data.table)
 library(dunn.test)
 library(ecodist)
 library(ellipse)
@@ -133,11 +135,17 @@ cn_nns <- cn_trees %>%
 
 #Step 1 - NMDS ----
 merged_trees_nns <- merge(nns_pos, cn_nns[, c("code", "canopy_pos", "CN")], 
-                          by = c("code", "canopy_pos"))
+                          by = c("code", "canopy_pos"), 
+                          all.x = TRUE)
+merged_trees_nns <- unique(merged_trees_nns, by = c("code", "canopy_pos"))
 
-numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns, 
+cn_nns_distinct <- cn_nns %>% distinct(code, canopy_pos, .keep_all = TRUE)
+merged_data <- nns_pos %>%
+  left_join(cn_nns_distinct, by = c("code", "canopy_pos"))
+
+numeric_cols_nns <- colnames(trees_pos)[sapply(trees_pos, 
                                                       is.numeric)] 
-numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
+numeric_data_nns <- trees_pos[, numeric_cols_nns]
 numeric_data_nns <- numeric_data_nns %>% select(Chl, LMA, LDMC, A, 
                                                 E, g, CN, Rleaf)
 
@@ -1079,99 +1087,47 @@ ggsave("boxplot_final_grid.jpg", grid_final, path = "Plots", units = "cm",
 
 
 
+#Pairwise differences ----
+merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by = c("code", "canopy_pos"))
+sig_traits <- c("LMA", "LDMC", "A", "g", "CN", "Chl")
+sub_data <- merged_trees %>%
+  filter(type %in% c("Native", "Invasive", "Alien")) %>%
+  select(type, one_of(sig_traits))
+
+scaled_data <- scale(sub_data[, sig_traits], center = TRUE, scale = TRUE)
+
+native_means_scaled <- colMeans(scaled_data[sub_data$type == "Native", ])
+alien_means_scaled <- colMeans(scaled_data[sub_data$type == "Alien", ]) 
+invasive_means_scaled <- colMeans(scaled_data[sub_data$type == "Invasive", ])
+
+(native_alien_diff_scaled <- abs(native_means_scaled - alien_means_scaled))
+(invasive_alien_diff_scaled <- abs(invasive_means_scaled - alien_means_scaled))
+
+cbind(native_alien_diff_scaled, invasive_alien_diff_scaled)
+
+t.test(native_alien_diff_scaled, mu = 0, alternative = "two.sided") #significant (0.02447)
+t.test(invasive_alien_diff_scaled, mu = 0, alternative = "two.sided") #significant (0.03101)
+
+wilcox.test(native_alien_diff_scaled, invasive_alien_diff_scaled) #p = 0.5887
+ 
 #Multivariate distances - determining invasion potential of C. bullatus ----
 merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by = c("code", "canopy_pos"))
 sig_traits <- c("LMA", "LDMC", "A", "g", "CN", "Chl")
-sub_data <- merged_trees[merged_trees$Group %in% c("Native", "Invasive", "Alien"), c("Group", sig_traits)]
+sub_data <- merged_trees %>%
+  filter(type %in% c("Native", "Invasive", "Alien")) %>%
+  select(type, one_of(sig_traits))
+scaled_data <- scale(sub_data[, sig_traits], center = TRUE, scale = TRUE)
 
-#Invasion index ----
-#Standardise and scale each trait (only significant ones)
-trees_pos$lma_z <- scale(trees_pos$LMA) 
-trees_pos$ldmc_z <- scale(trees_pos$LDMC)
-trees_pos$chl_z <- scale(trees_pos$Chl)
-trees_pos$A_z <- scale(trees_pos$A)
-trees_pos$g_z <- scale(trees_pos$g)
-cn_trees$cn_z <- scale(cn_trees$CN)
+#calculate centroid
+native_centroid <- colMeans(scaled_data[sub_data$type == "Native", sig_traits])
+invasive_centroid <- colMeans(scaled_data[sub_data$type == "Invasive", sig_traits])
+alien_centroid <- colMeans(scaled_data[sub_data$type == "Alien", sig_traits])
 
-(means_trees_z <- trees_pos %>% 
-    group_by(type) %>% 
-    summarise(mean_lma_z = mean(lma_z),
-              mean_ldmc_z = mean(ldmc_z), 
-              mean_chl_z = mean(chl_z),
-              mean_A_z = mean(A_z),
-              mean_g_z = mean(g_z))) 
+(dist_native_alien <- dist(rbind(native_centroid, alien_centroid), method = "euclidean"))
+(dist_invasive_alien <- dist(rbind(invasive_centroid, alien_centroid), method = "euclidean"))
+(dist_diff <- dist_native_alien - dist_invasive_alien)
+#alien are more different from native than invasive
 
-(means_cn_trees_z <- cn_trees %>% 
-    group_by(type) %>% 
-    summarise(mean_cn_z = mean(cn_z)))
-
-(combined_data <- left_join(means_trees_z, means_cn_trees_z, by = "type"))
-
-#weights (add up to 1 in total)
-#A and LMA seem most important, followed by LDMC and chl, and finally g and C/N ratio
-weights <- c(lma = 0.25, ldmc = 0.15, chl = 0.15, 
-             A = 0.25, g = 0.1, cn = 0.1)
-
-(weighted_totals <- combined_data %>%
-  mutate(across(starts_with("mean_"), ~ . * weights[cur_column()], .names = "weighted_{col}")) %>%
-  rowwise() %>%
-  mutate(total_weighted_score = sum(c_across(starts_with("weighted_")))) %>%
-  select(type, total_weighted_score))
-
-#Alien trait total = 2.463
-#Invasive trait total = 9.878
-#Native trait total = -0.4532
-#Naturalised trait total = -0.3249
-
-(alien_dist_invasive = abs(2.463 - 9.878)) #distance between alien and invasive groups (absolute value)
-#7.415
-(alien_dist_native = abs(2.463 - (-0.4532))) #2.9162
-(invasiveness_index = 0.5 * alien_dist_invasive + 0.5 * alien_dist_native) #5.1656
-
-
-(invasive_dist_alien = abs(-0.4532 - 9.878)) #distance between alien and invasive groups (absolute value); 10.3312
-(invasive_dist_naturalised = abs(-0.3249 - 9.878)) #2.7879
-(invasiveness_index = 0.5 * invasive_dist_alien + 0.5 * invasive_dist_naturalised) #10.26705
-
-#the Alien group has a lower invasiveness index (5.1656) compared to the known Invasive (10.26705), 
-#suggesting a potentially lower invasion risk for the Alien species in this system based on the combined trait data.
-
-#calculate trait distances (between Alien and Invasive)
-lma_dist_inv <- abs(trees_pos$lma_z[trees_pos$type == "Alien"] - 
-                    trees_pos$lma_z[trees_pos$type == "Invasive"])
-ldmc_dist_inv <- abs(trees_pos$ldmc_z[trees_pos$type=="Alien"] - 
-                     trees_pos$ldmc_z[trees_pos$type=="Invasive"])
-a_dist_inv <- abs(trees_pos$A_z[trees_pos$type == "Alien"] - 
-                  trees_pos$A_z[trees_pos$type == "Invasive"])
-g_dist_inv <- abs(trees_pos$g_z[trees_pos$type == "Alien"] - 
-                  trees_pos$ldmc_z[trees_pos$type == "Invasive"])
-chl_dist_inv <- abs(trees_pos$chl_z[trees_pos$type == "Alien"] -
-                    trees_pos$chl_z[trees_pos$type == "Invasive"])
-cn_dist_inv <- abs(cn_trees$cn_z[cn_trees$type == "Alien"] -
-                    cn_trees$cn_z[cn_trees$type == "Invasive"])
-
-lma_dist_native <- abs(trees_pos$lma_z[trees_pos$type == "Alien"] - 
-                         trees_pos$lma_z[trees_pos$type == "Native"])
-ldmc_dist_native <- abs(trees_pos$ldmc_z[trees_pos$type == "Alien"] - 
-                         trees_pos$ldmc_z[trees_pos$type == "Native"])
-a_dist_native <- abs(trees_pos$A_z[trees_pos$type == "Alien"] - 
-                         trees_pos$A_z[trees_pos$type == "Native"])
-g_dist_native <- abs(trees_pos$g_z[trees_pos$type == "Alien"] - 
-                         trees_pos$g_z[trees_pos$type == "Native"])
-chl_dist_native <- abs(trees_pos$chl_z[trees_pos$type == "Alien"] - 
-                         trees_pos$chl_z[trees_pos$type == "Native"])
-cn_dist_native <- abs(cn_trees$cn_z[trees_pos$type == "Alien"] - 
-                         cn_trees$cn_z[trees_pos$type == "Native"])
-
-weights <- c(lma = 0.167, ldmc = 0.167, chl = 0.167, 
-             A = 0.167, g = 0.167, cn = 0.167)
-
-inv_index <- weights["lma"]*lma_dist_inv + weights["ldmc"]*ldmc_dist_inv + 
-  weights["A"]*a_dist_inv + weights["g"]*g_dist_inv + 
-  weights["chl"]*chl_dist_inv + weights["cn"]*cn_dist_inv - 
-  weights["lma"]*lma_dist_native - weights["ldmc"]*ldmc_dist_native - 
-  weights["A"]*a_dist_inv - weights["g"]*g_dist_inv - 
-  weights["chl"]*chl_dist_inv - weights["cn"]*cn_dist_inv
 
 #Step 4 - LMs/GLMs for random effects ----
 #in order to select the additional traits, i chose the traits which had the highest r^2 from the NMDS (add the en table in the results)
