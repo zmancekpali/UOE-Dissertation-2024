@@ -132,14 +132,14 @@ cn_nns <- cn_trees %>%
   summarise(mean_cn = mean(C/N)))
 
 #Step 1 - NMDS ----
-merged_trees_nns <- merge(nns_pos, cn_nns[, c("code", "canopy_pos", "N")], 
+merged_trees_nns <- merge(nns_pos, cn_nns[, c("code", "canopy_pos", "CN")], 
                           by = c("code", "canopy_pos"))
 
 numeric_cols_nns <- colnames(merged_trees_nns)[sapply(merged_trees_nns, 
                                                       is.numeric)] 
 numeric_data_nns <- merged_trees_nns[, numeric_cols_nns]
 numeric_data_nns <- numeric_data_nns %>% select(Chl, LMA, LDMC, A, 
-                                                E, g, N, Rleaf)
+                                                E, g, CN, Rleaf)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data_nns,
@@ -154,7 +154,7 @@ nmds_coords_nns$type <- merged_trees_nns$type
 
 plot(nmds_nns, type = "t") #base r NMDS plot
 stressplot(nmds_nns) #stressplot; linear R^2 = 0.995; non-linear R^2 = 0.98
-(stress_nns <- nmds_nns$stress) #0.0731529
+(stress_nns <- nmds_nns$stress) #0.07315289
 
 #ggplot NMDS
 hull.data <- data.frame()
@@ -239,7 +239,7 @@ merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by =
 
 numeric_cols <- colnames(merged_trees)[sapply(merged_trees, is.numeric)] 
 numeric_data <- merged_trees[, numeric_cols]
-numeric_data <- numeric_data %>% select(Chl, LMA, LDMC, A, E, g, CN, DR)
+numeric_data <- numeric_data %>% select(Chl, LMA, LDMC, A, E, g, CN, Rleaf)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data,
@@ -251,7 +251,7 @@ nmds_coords <- as.data.frame(scores(nmds, "sites"))
 nmds_coords$type <- merged_trees$type
 
 stressplot(nmds) #non-metric R^2 = 0.995, linear R^2 = 0.979
-(stress <- nmds$stress) #0.07331421
+(stress <- nmds$stress) #0.07331424
 
 hull.data <- data.frame()
 for (i in unique(nmds_coords$type)) {
@@ -338,13 +338,13 @@ en_coord_cont_total = as.data.frame(scores(en_total, "vectors")) * ordiArrowMul(
           axis.text = element_blank(), 
           legend.key = element_blank(), 
           legend.text = element_text(size = 9, colour = "grey30"),
-          legend.position = c(0.93, 0.93), 
+          legend.position = c(0.9, 0.9), 
           legend.direction = "vertical", 
           legend.title = element_blank()) +
     geom_segment(data = en_coord_cont, aes(x = 0, y = 0, 
                                            xend = NMDS1, 
                                            yend = NMDS2), 
-                 size =1, alpha = 0.5, colour = "grey30") +
+                 linewidth = 1, alpha = 0.5, colour = "grey30") +
     geom_text(data = en_coord_cont_total, aes(x = NMDS1, y = NMDS2), 
               colour = "black", fontface = "bold", 
               label = row.names(en_coord_cont_total)) +
@@ -1079,6 +1079,11 @@ ggsave("boxplot_final_grid.jpg", grid_final, path = "Plots", units = "cm",
 
 
 
+#Multivariate distances - determining invasion potential of C. bullatus ----
+merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by = c("code", "canopy_pos"))
+sig_traits <- c("LMA", "LDMC", "A", "g", "CN", "Chl")
+sub_data <- merged_trees[merged_trees$Group %in% c("Native", "Invasive", "Alien"), c("Group", sig_traits)]
+
 #Invasion index ----
 #Standardise and scale each trait (only significant ones)
 trees_pos$lma_z <- scale(trees_pos$LMA) 
@@ -1100,7 +1105,7 @@ cn_trees$cn_z <- scale(cn_trees$CN)
     group_by(type) %>% 
     summarise(mean_cn_z = mean(cn_z)))
 
-combined_data <- left_join(means_trees_z, means_cn_trees_z, by = "type")
+(combined_data <- left_join(means_trees_z, means_cn_trees_z, by = "type"))
 
 #weights (add up to 1 in total)
 #A and LMA seem most important, followed by LDMC and chl, and finally g and C/N ratio
