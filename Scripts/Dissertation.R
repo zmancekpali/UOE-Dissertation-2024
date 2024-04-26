@@ -206,7 +206,7 @@ for (i in unique(nmds_coords_nns$type)) {
 
 en_coord_cont = as.data.frame(scores(en, "vectors")) * ordiArrowMul(en)
 
-(drivers_nmds <- ggplot(data = nmds_coords_nns, aes(x = NMDS1, y = NMDS2)) + 
+(drivers_nns <- ggplot(data = nmds_coords_nns, aes(x = NMDS1, y = NMDS2)) + 
     geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
     geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.7) + #add polygons for invasive type
     geom_point(data = nmds_coords_nns, aes(colour = type), size = 3) + 
@@ -217,14 +217,15 @@ en_coord_cont = as.data.frame(scores(en, "vectors")) * ordiArrowMul(en)
           panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
           axis.ticks = element_blank(), axis.text = element_blank(), legend.key = element_blank(), 
           legend.text = element_text(size = 9, colour = "grey30"),
-          legend.position = c(0.9, 0.93), legend.direction = "vertical", legend.title = element_blank()) +
+          legend.position = c(0.13, 0.1), legend.direction = "vertical", legend.title = element_blank()) +
     geom_segment(data = en_coord_cont, aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), 
                  size = 1, alpha = 0.5, colour = "grey30") +
     geom_text(data = en_coord_cont, aes(x = NMDS1, y = NMDS2), colour = "black", 
               fontface = "bold", label = row.names(en_coord_cont)) +
-    labs(colour = "type"))
+    labs(colour = "type") +
+    annotate("text", label = "a)", x = -66, y = 24, fontface = "bold"))
 
-ggsave("drivers_nmds_nns_2d.jpg", drivers_nmds, path = "Plots", units = "cm", 
+ggsave("drivers_nmds_nns_2d.jpg", drivers_nns, path = "Plots", units = "cm", 
        width = 20, height = 17) 
 
 #importance of each leaf trait:
@@ -240,221 +241,19 @@ en
 
 
 
-#2-dimensional NMDS (native and invasive only)----
-subset_merged <- merged_trees_nns %>% 
-  filter(code_two == c("Native", "Invasive"))
-
-numeric_cols_ni<- colnames(subset_merged)[sapply(subset_merged, 
-                                                 is.numeric)] 
-numeric_data_ni <- subset_merged[, numeric_cols_ni]
-numeric_data_ni <- numeric_data_ni %>% select(LCC, LMA, LDMC, A, 
-                                              E, g, Rleaf, CN) %>% na.omit()
-
-dimcheckMDS(numeric_data_ni,
-            distance = "euclidean",
-            k = 6) #goeveg package; 2 dimensions are great
-
-nmds_ni <- metaMDS(numeric_data_ni, distance = "euclidean", k = 2)
-nmds_coords_ni <- as.data.frame(scores(nmds_ni, "sites"))
-nmds_coords_ni$type <- subset_merged$type[match(rownames(nmds_coords_ni), 
-                                                    rownames(subset_merged))]
-
-plot(nmds_ni, type = "t") #base r NMDS plot
-stressplot(nmds_ni) #stressplot; linear R^2 = 0.996; non-linear R^2 = 0.986
-(stress_ni <- nmds_ni$stress) #0.06522569
-
-#ggplot NMDS
-hull.data <- data.frame()
-for (i in unique(nmds_coords_ni$type)) {
-  temp <- nmds_coords_ni[nmds_coords_ni$type == i, ][chull(nmds_coords_ni[nmds_coords_ni$type == i, c("NMDS1", "NMDS2")]), ]
-  hull.data <- rbind(hull.data, temp)
-}
-
-(nmds_ni_plot <- ggplot() +
-    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
-    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.8) + #add polygons for invasive type
-    geom_point(data = nmds_coords_ni, aes(x = NMDS1, y = NMDS2, color = type), size = 3) + # Add points
-    scale_color_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090")) +
-    scale_fill_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090")) +
-    theme_classic() +
-    theme(legend.position = c(0.1, 0.95), legend.direction = "vertical", legend.title = element_blank()))
-ggsave("nmds_ni_2d.jpg", nmds_ni_plot, path = "Plots", units = "cm", 
-       width = 20, height = 20) 
-
-nmds_coords_ni <- as.data.frame(scores(nmds_ni, "sites"))
-diss_matrix_ni <- vegdist(nmds_coords_ni, method = "euclidean")
-nmds_coords_ni$type <- subset_merged$type[match(rownames(nmds_coords_ni), 
-                                                rownames(subset_merged))]
-anosim(diss_matrix_ni, nmds_coords_ni$type, permutations = 9999) 
-#significant (4e-04), the three types are significantly different in their traits;
-#the R value is also close to 1 (0.6535), indicating a substantial and significant difference between the two groups
-
-#drivers of the variation:
-en_ni = envfit(nmds_ni, numeric_data_ni, permutations = 999, na.rm = TRUE)
-
-plot(nmds_ni)
-plot(en_ni)
-#The arrow(s) point to the direction of most rapid change in the variable (direction of the gradient)
-#The length of the arrow(s) is proportional to the correlation between ordination and environmental variable (strength of the gradient)
-
-plot(nmds_ni)
-plot(en_ni, p.max = 0.05) #can also only plot the significant ones this way
-
-
-hull.data <- data.frame()
-for (i in unique(nmds_coords_ni$type)) {
-  temp <- nmds_coords_ni[nmds_coords_ni$type == i, ][chull(nmds_coords_ni[nmds_coords_ni$type == i, c("NMDS1", "NMDS2")]), ]
-  hull.data <- rbind(hull.data, temp)
-}
-
-en_coord_cont_ni = as.data.frame(scores(en_ni, "vectors")) * ordiArrowMul(en_ni)
-
-(drivers_nmds_ni <- ggplot(data = nmds_coords_ni, aes(x = NMDS1, y = NMDS2)) + 
-    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
-    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.7) + #add polygons for invasive type
-    geom_point(data = nmds_coords_ni, aes(colour = type), size = 3) + 
-    scale_colour_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090")) + 
-    scale_fill_manual(values = c("Native" = "#698B69", "Invasive" = "#CD6090")) + 
-    theme_classic() +
-    theme(axis.title = element_text(size = 10, face = "bold", colour = "grey30"), 
-          panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
-          axis.ticks = element_blank(), axis.text = element_blank(), legend.key = element_blank(), 
-          legend.text = element_text(size = 9, colour = "grey30"),
-          legend.position = c(0.9, 0.93), legend.direction = "vertical", legend.title = element_blank()) +
-    geom_segment(data = en_coord_cont_ni, aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), 
-                 size =1, alpha = 0.5, colour = "grey30") +
-    geom_text(data = en_coord_cont_ni, aes(x = NMDS1, y = NMDS2), colour = "black", 
-              fontface = "bold", label = row.names(en_coord_cont)) +
-    labs(colour = "type"))
-
-ggsave("drivers_nmds_ni_2d.jpg", drivers_nmds_ni, path = "Plots", units = "cm", 
-       width = 20, height = 20) 
-
-#importance of each leaf trait:
-en_ni
-#lma and g have high r2 values (close to 1), indicating strong correlations with both NMDS1 and NMDS2.
-#This suggests that these traits play a significant role in differentiating between invasive and native species in terms of their leaf characteristics.
-#Additionally, the significant p-values (***) indicate that these correlations are statistically robust.
-#chl and c_n also show significant correlations with the NMDS axes, but to a lesser extent compared to lma and g (still ***)
-#ldcm and A have relatively low r2 values and (but are still significany, * and ***, respectively), suggesting weaker correlations with the NMDS axes.
-#E and DR have very low r^2 values and are insignificant
-
-#2-dimensional NMDS (native and naturalised only) ----
-subset_nn <- merged_trees_nns %>% 
-  filter(code_two == c("Native", "Naturalised"))
-
-numeric_cols_nn <- colnames(subset_nn)[sapply(subset_nn, 
-                                                 is.numeric)] 
-numeric_data_nn <- subset_nn[, numeric_cols_nn]
-numeric_data_nn <- numeric_data_nn %>% select(LCC, LMA, LDMC, A, 
-                                              E, g, Rleaf, CN) %>% na.omit()
-
-dimcheckMDS(numeric_data_nn,
-            distance = "euclidean",
-            k = 6) #goeveg package; 2 dimensions are great
-
-nmds_nn <- metaMDS(numeric_data_nn, distance = "euclidean", k = 2)
-nmds_coords_nn <- as.data.frame(scores(nmds_nn, "sites"))
-nmds_coords_nn$type <- subset_nn$type[match(rownames(nmds_coords_nn), 
-                                                rownames(subset_nn))]
-
-plot(nmds_nn, type = "t") #base r NMDS plot
-stressplot(nmds_nn) #stressplot; linear R^2 = 0.995; non-linear R^2 = 0.981
-(stress_nn <- nmds_nn$stress) #0.07065742
-
-#ggplot NMDS
-hull.data <- data.frame()
-for (i in unique(nmds_coords_nn$type)) {
-  temp <- nmds_coords_nn[nmds_coords_nn$type == i, ][chull(nmds_coords_nn[nmds_coords_nn$type == i, c("NMDS1", "NMDS2")]), ]
-  hull.data <- rbind(hull.data, temp)
-}
-
-(nmds_nn_plot <- ggplot() +
-    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
-    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.8) + #add polygons for invasive type
-    geom_point(data = nmds_coords_nn, aes(x = NMDS1, y = NMDS2, color = type), size = 3) + # Add points
-    scale_color_manual(values = c("Native" = "#698B69", "Naturalised" = "#EEC900")) +
-    scale_fill_manual(values = c("Native" = "#698B69", "Naturalised" = "#EEC900")) +
-    theme_classic() +
-    theme(legend.position = c(0.11, 0.95), legend.direction = "vertical", legend.title = element_blank()))
-ggsave("nmds_nn_2d.jpg", nmds_nn_plot, path = "Plots", units = "cm", 
-       width = 20, height = 20) 
-
-nmds_coords_nn <- as.data.frame(scores(nmds_nn, "sites"))
-diss_matrix_nn <- vegdist(nmds_coords_nn, method = "euclidean")
-nmds_coords_nn$type <- subset_nn$type[match(rownames(nmds_coords_nn), 
-                                            rownames(subset_nn))]
-anosim(diss_matrix_nn, nmds_coords_nn$type, permutations = 9999) 
-#insignificant (0.1061), the two types are not different in their traits;
-#the R value is also close to 0 (0.02046)
-
-#drivers of the variation:
-en_nn = envfit(nmds_nn, numeric_data_nn, permutations = 999, na.rm = TRUE)
-
-plot(nmds_nn)
-plot(en_nn)
-#The arrow(s) point to the direction of most rapid change in the variable (direction of the gradient)
-#The length of the arrow(s) is proportional to the correlation between ordination and environmental variable (strength of the gradient)
-
-plot(nmds_nn)
-plot(en_nn, p.max = 0.05) #can also only plot the significant ones this way
-
-
-hull.data <- data.frame()
-for (i in unique(nmds_coords_nn$type)) {
-  temp <- nmds_coords_nn[nmds_coords_nn$type == i, ][chull(nmds_coords_nn[nmds_coords_nn$type == i, c("NMDS1", "NMDS2")]), ]
-  hull.data <- rbind(hull.data, temp)
-}
-
-en_coord_cont_nn = as.data.frame(scores(en_nn, "vectors")) * ordiArrowMul(en_nn)
-
-(drivers_nmds_nn <- ggplot(data = nmds_coords_nn, aes(x = NMDS1, y = NMDS2)) + 
-    geom_polygon(data = hull.data[hull.data$type != "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.5) + #add polygons for non-invasive types
-    geom_polygon(data = hull.data[hull.data$type == "Invasive", ], aes(x = NMDS1, y = NMDS2, group = type, fill = type), alpha = 0.7) + #add polygons for invasive type
-    geom_point(data = nmds_coords_nn, aes(colour = type), size = 3) + 
-    scale_colour_manual(values = c("Native" = "#698B69", "Naturalised" = "#EEC900")) + 
-    scale_fill_manual(values = c("Native" = "#698B69", "Naturalised" = "#EEC900")) + 
-    theme_classic() +
-    theme(axis.title = element_text(size = 10, face = "bold", colour = "grey30"), 
-          panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "grey30"), 
-          axis.ticks = element_blank(), axis.text = element_blank(), legend.key = element_blank(), 
-          legend.text = element_text(size = 9, colour = "grey30"),
-          legend.position = c(0.9, 0.93), legend.direction = "vertical", legend.title = element_blank()) +
-    geom_segment(data = en_coord_cont_ni, aes(x = 0, y = 0, xend = NMDS1, yend = NMDS2), 
-                 size =1, alpha = 0.5, colour = "grey30") +
-    geom_text(data = en_coord_cont_ni, aes(x = NMDS1, y = NMDS2), colour = "black", 
-              fontface = "bold", label = row.names(en_coord_cont)) +
-    labs(colour = "type"))
-
-ggsave("drivers_nmds_nn_2d.jpg", drivers_nmds_nn, path = "Plots", units = "cm", 
-       width = 20, height = 20) 
-
-#importance of each leaf trait:
-en_nn
-#lma and g have high r2 values (close to 1), indicating strong correlations with both NMDS1 and NMDS2.
-#This suggests that these traits play a significant role in differentiating between invasive and native species in terms of their leaf characteristics.
-#Additionally, the significant p-values (***) indicate that these correlations are statistically robust.
-#chl and c_n also show significant correlations with the NMDS axes, but to a lesser extent compared to lma and g (still ***)
-#ldcm and A have relatively low r2 values and (but are still significany, * and ***, respectively), suggesting weaker correlations with the NMDS axes.
-#E and DR have very low r^2 values and are insignificant
-
-#NMDS grid ----
-nmds_grid <- grid.arrange(drivers_nmds_nn, drivers_nmds_ni,
-                          ncol = 2)
-ggsave("nmds_grid.jpg", nmds_grid, path = "Plots", units = "cm", 
-       width = 30, height = 15)
-
-#2-dimensional NMDS (with alien - don't know if I will use) ----
-merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by = c("code", "canopy_pos"))
+#2-dimensional NMDS (with alien) ----
+merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], 
+                      by = c("code", "canopy_pos"))
 
 numeric_cols <- colnames(merged_trees)[sapply(merged_trees, is.numeric)] 
 numeric_data <- merged_trees[, numeric_cols]
-numeric_data <- numeric_data %>% select(Chl, LMA, LDMC, A, E, g, CN, Rleaf)
+numeric_data <- numeric_data %>% select(LCC, LMA, LDMC, A, E, g, CN, Rleaf)
 
 #finding the lowest stress for up to 6 dimensions:
 dimcheckMDS(numeric_data,
             distance = "euclidean",
             k = 6) #goeveg package
+png('output/nmds_stress.png', path = 'Plots')
 
 nmds <- metaMDS(numeric_data, distance = "euclidean", k = 2) 
 nmds_coords <- as.data.frame(scores(nmds, "sites"))
@@ -491,7 +290,8 @@ for (i in unique(nmds_coords$type)) {
     theme_classic() +
     theme(legend.position = c(0.9, 0.9), 
           legend.direction = "vertical", 
-          legend.title = element_blank()))
+          legend.title = element_blank()) +
+    annotate("text", label = "a)", x = -66, y = 24, fontface = "bold"))
 
 ggsave("combined_nmds_2d.jpg", nmds_plot, path = "Plots", units = "cm", 
        width = 20, height = 20) 
@@ -548,18 +348,18 @@ en_coord_cont_total = as.data.frame(scores(en_total, "vectors")) * ordiArrowMul(
           axis.text = element_blank(), 
           legend.key = element_blank(), 
           legend.text = element_text(size = 9, colour = "grey30"),
-          legend.position = c(0.9, 0.9), 
+          legend.position = c(0.13, 0.13), 
           legend.direction = "vertical", 
           legend.title = element_blank()) +
-    geom_segment(data = en_coord_cont, aes(x = 0, y = 0, 
+    geom_segment(data = en_coord_cont_total, aes(x = 0, y = 0, 
                                            xend = NMDS1, 
                                            yend = NMDS2), 
                  linewidth = 1, alpha = 0.5, colour = "grey30") +
     geom_text(data = en_coord_cont_total, aes(x = NMDS1, y = NMDS2), 
               colour = "black", fontface = "bold", 
               label = row.names(en_coord_cont_total)) +
-    labs(colour = "type")) #can't get these arrows to work - idk why
-
+    labs(colour = "type") + #can't get these arrows to work - idk why
+    annotate("text", label = "b)", x = -66, y = 24, fontface = "bold"))
 ggsave("drivers_nmds_nns_2d.jpg", drivers_nmds, path = "Plots", units = "cm", 
        width = 20, height = 20)
 
@@ -571,6 +371,7 @@ en_total
 #chl and c_n also show significant correlations with the NMDS axes, but to a lesser extent compared to lma and g (still ***)
 #A has a relatively low r2 value and (but is still significant ***), suggesting weaker correlations with the NMDS axes.
 #E, LDMC, and DR have very low r^2 values and are insignificant
+
 
 
 
@@ -922,7 +723,8 @@ bartlett.test(transformed_lma2 ~ type, data = trees_pos) #heteroscedascity
           axis.text = element_text(size = 10), 
           axis.title = element_text(size = 11), 
           plot.margin = unit(c(0.5,0.5,0.5,0.5), units = "cm")) +
-    guides(fill = FALSE))
+    guides(fill = FALSE) +
+    annotate("text", label = "e)", x = 0.7, y = 150, fontface = "bold"))
 
 ggsave("lma_boxplot2.jpg", lma_boxplot2, path = "Plots", units = "cm", 
        width = 25, height = 13) 
@@ -987,17 +789,20 @@ ggsave("chl_boxplot2.jpg", chl_boxplot2, path = "Plots", units = "cm",
        width = 25, height = 13) 
 
 
-#LDCM ----
+#LDMC ----
 ldcm_mod2 <- lm(LDMC ~ type, data = trees_pos)
 autoplot(ldcm_mod2)
 shapiro.test(resid(ldcm_mod2)) #residuals distributed normally
 bartlett.test(LDMC ~ type, data = trees_pos) #homoscedascity
 anova(ldcm_mod2) #significant, p = 0.002177; df = 3 
 
-anova_ldmc <- aov(ldcm_mod2)
-TukeyHSD(anova_ldmc)
-#invasive/alien differ significantly
-#native/invasive and naturalised/invasive differ significantly
+(ldmc_kruskal2 <- trees_pos %>% kruskal_test(LDMC ~ type)) #n = 202; df = 3; p = 0.0000146 
+(ldmc_effect2 <- trees_pos %>% kruskal_effsize(LDMC ~ type)) #effect size = 0.112; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.112
+
+#Dunn post-hoc test
+(dunn_ldmc2 <- trees_pos %>% dunn_test(LDMC ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
 
 (ldcm_boxplot2 <- ggplot(trees, 
                         aes(x = factor(code_two, levels = 
@@ -1032,10 +837,13 @@ shapiro.test(resid(a_mod2)) #residuals distributed normally
 bartlett.test(A ~ type, data = trees_pos) #homoscedascity
 anova(a_mod2) #p = 0.003221; significant; df = 3
 
-anova_a <- aov(a_mod2)
-TukeyHSD(anova_a)
-#invasive/alien differ significantly
-#native/invasive and naturalised/invasive differ significantly
+(a_kruskal2 <- trees_pos %>% kruskal_test(A ~ type)) #n = 202; df = 3; p = 0.00134 
+(a_effect2 <- trees_pos %>% kruskal_effsize(A ~ type)) #effect size = 0.112; moderate magnitude
+#report as: moderate effect size is detected, eta2[H] = 0.112
+
+#Dunn post-hoc test
+(dunn_a2 <- trees_pos %>% dunn_test(A ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
 
 (a_boxplot2 <- ggplot(trees_pos, 
                       aes(x = factor(code_two, levels = 
@@ -1068,7 +876,15 @@ e_mod2 <- lm(E ~ code_two, data = trees_pos)
 autoplot(e_mod2)
 shapiro.test(resid(e_mod2)) #residuals distributed normally
 bartlett.test(E ~ code_two, data = trees_pos) #homoscedascity
-anova(e_mod2) #NS; p-value = 0.8372
+
+(e_kruskal2 <- trees_pos %>% kruskal_test(E ~ type)) #n = 202; df = 3; p = 0.612 
+(e_effect2 <- trees_pos %>% kruskal_effsize(E ~ type)) #effect size = -0.006 small magnitude
+#report as: small effect size is detected, eta2[H] = -0.006
+
+#Dunn post-hoc test
+(dunn_e2 <- trees_pos %>% dunn_test(E ~ type, p.adjust.method = "bonferroni") %>% 
+    add_xy_position(x = "type")) 
+
 
 (e_boxplot2 <- ggplot(trees_pos, 
                       aes(x = factor(code_two, levels = 
@@ -1215,7 +1031,7 @@ bartlett.test(transformed_cn2 ~ type, data = cn_trees) #heteroscedascity
 #invasive/native differ significantly
 #invasive/alien differ significantly
 
-(cn_boxplot2 <- ggplot(cn_trees, $
+(cn_boxplot2 <- ggplot(cn_trees, 
                       aes(x = factor(code_two, levels = c('Native', 'Naturalised', 
                                                           'Invasive', 'C. bullatus')), #reorders the types 
                           y = CN, fill = code_two)) + 
@@ -1307,183 +1123,5 @@ invasive_means_scaled <- colMeans(scaled_data[sub_data$type == "Invasive", ])
 
 cbind(native_alien_diff_scaled, invasive_alien_diff_scaled)
 
-t.test(native_alien_diff_scaled, mu = 0, alternative = "two.sided") #significant (0.02447)
-t.test(invasive_alien_diff_scaled, mu = 0, alternative = "two.sided") #significant (0.03101)
-
-wilcox.test(native_alien_diff_scaled, invasive_alien_diff_scaled) #p = 0.5887
- 
-#Multivariate distances - determining invasion potential of C. bullatus ----
-merged_trees <- merge(trees_pos, cn_trees[, c("code", "canopy_pos", "CN")], by = c("code", "canopy_pos"))
-sig_traits <- c("LMA", "LDMC", "A", "g", "CN", "LCC")
-sub_data <- merged_trees %>%
-  filter(type %in% c("Native", "Invasive", "Alien")) %>%
-  select(type, one_of(sig_traits))
-scaled_data <- scale(sub_data[, sig_traits], center = TRUE, scale = TRUE)
-
-#calculate centroid
-native_centroid <- colMeans(scaled_data[sub_data$type == "Native", sig_traits])
-invasive_centroid <- colMeans(scaled_data[sub_data$type == "Invasive", sig_traits])
-alien_centroid <- colMeans(scaled_data[sub_data$type == "Alien", sig_traits])
-
-(dist_native_alien <- dist(rbind(native_centroid, alien_centroid), method = "euclidean"))
-(dist_invasive_alien <- dist(rbind(invasive_centroid, alien_centroid), method = "euclidean"))
-(dist_diff <- dist_native_alien - dist_invasive_alien)
-#alien are more different from native than invasive
-
-
-#Step 4 - LMs/GLMs for random effects ----
-#in order to select the additional traits, i chose the traits which had the highest r^2 from the NMDS (add the en table in the results)
-#or do reading and pick traits that are most interesting for invasion potential (or maybe one of each group)
-#LMA LM ----
-hist(nns$lma) #looks normal-ish; slightly skewed
-shapiro_test(nns$lma) #non-normal
-
-#trying a log-transformation
-hist(log(nns$lma)) #normal
-shapiro_test(log(nns$lma)) #normal
-
-lma_lm_null <- lm(log(lma) ~ 1, data = nns)
-lma_lm1 <- lm(log(lma) ~ type, data = nns)
-plot(lma_lm1)
-ad.test(residuals(lma_lm1)) #p = 0.1062; normally distributed errors
-lma_lm2 <- lm(log(lma) ~ type + age + dbh + ever_dec + canopy_pos, data = nns)
-plot(lma_lm2)
-ad.test(residuals(lma_lm2)) #p = 0.7818; normally distributed errors
-#both of these are ok for the data
-
-#stepwise model selection -> start with a full model and decrease by each trait (least significant)
-
-
-#remove species because only one sample per species -> might not be representative, also studies that talk ab interspecific variation
-
-#see which model is most parismoius
-AIC(lma_lm_null, lma_lm1, lma_lm2) #lma_lm2 is most parsimonious
-summary(lma_lm2)
-#we can see a significant effect of light and decidousness on LMA
-
-#invasion type is significant, but deciduousness is more important to LMA (based on the above result)
-#further research -> discuss the effects of these additional points whether this is more important in native/naturalised
-#also how many are deciduous/evergreen from each group for this study
-
-(interspecific_lma <- ggplot(trees, aes(x = type, y = lma, fill = ever_dec)) +
-    geom_boxplot() +
-    theme_classic() +
-    ylab(bquote("LMA (g cm"^{-2}*")")) +
-    xlab("Species") +
-    theme(legend.position = c(0.95, 0.95),
-          legend.key = element_rect(fill = "white", color = "white"),
-          legend.background = element_rect(fill = "white", color = "white"),
-          legend.key.size = unit(1.5, "line"),
-          legend.title = element_blank()))
-
-(interspecific_lma <- ggplot(trees, aes(x = type, y = lma, fill = canopy_pos)) +
-    geom_boxplot() +
-    theme_classic() +
-    ylab(bquote("LMA (g cm"^{-2}*")")) +
-    xlab("Species") +
-    theme(legend.position = c(0.95, 0.95),
-          legend.key = element_rect(fill = "white", color = "white"),
-          legend.background = element_rect(fill = "white", color = "white"),
-          legend.key.size = unit(1.5, "line"),
-          legend.title = element_blank()))
-
-
-ggsave("interspecific_lma_variation.jpg", interspecific_lma, path = "Plots", 
-       width = 30, height = 12)
-
-#refer to the appendix when discussing -> just a sentence, not too much
-
-#Chl GLM ----
-hist(nns$chl) #looks normal
-shapiro_test(nns$chl) #non-normal
-
-#chl values out of 95% interval were removed (or some other number)
-
-#see if removing it is also fine for boxplots + NMDS (but if necessary just include to improve the normality of the chl data)
-#if that doesnt work, select the best transformation -> this reduced the p value of the Shapiro test (still significant)
-
-#trying a log-transformation
-hist(log(nns$chl)) #looks normal
-shapiro_test(log(nns$chl)) #non-normal
-
-#inverse
-hist(1/nns$chl) #looks normal
-shapiro_test(1/nns$chl) #non-normal
-
-#sqrt
-hist(sqrt(nns$chl)) #looks normal
-shapiro_test(sqrt(nns$chl)) #non-normal
-
-hist((nns$chl)) #looks normal
-shapiro_test(sqrt(nns$chl)) #non-normal
-
-
-chl_lm_null_reg <- lm(chl ~ 1, data = nns)
-chl_lm1_reg <- lm(chl ~ type, data = nns)
-plot(chl_lm1_reg)
-ad.test(residuals(chl_lm1_reg)) 
-
-
-chl_lm_null <- lm(log(chl) ~ 1, data = nns)
-chl_lm1 <- lm(log(chl) ~ type, data = nns)
-plot(chl_lm1)
-ad.test(residuals(chl_lm1)) 
-
-
-chl_lm_null_sqrt <- lm(sqrt(chl) ~ 1, data = nns)
-chl_lm1_sqrt <- lm(sqrt(chl) ~ type, data = nns)
-plot(chl_lm1_sqrt)
-ad.test(residuals(chl_lm1_sqrt)) #p = 0.006; normally distributed errors
-
-chl
-chl_lm2 <- lm(chl ~ type + age + ever_dec + canopy_pos, data = nns)
-plot(chl_lm2)
-ad.test(residuals(chl_lm2)) #p = 0.5144; normally distributed errors
-
-#none of them worked, so glm it is
-chl_null_glm <- glm(chl ~ 1, data = trees, family = 'gaussian')
-chl_glm <- glm(lma ~ type + age + ever_dec + canopy_pos, data = trees, family = "gaussian") #basic glm
-plot(chl_glm)
-ad.test(residuals(chl_glm)) #p = 0.0005; non-normally distributed errors
-
-chl_glm2 <- glm(chl ~ type + age + ever_dec + canopy_pos, data = trees, family = Gamma(link = "inverse")) #default gamma distribution link
-#used the gamma distribution because the outcome (chl) is continuous but non-normal
-plot(chl_glm2) 
-ad.test(residuals(chl_glm2)) #p = 0.03; non-normally distributed errors; not to be used
-
-AIC(chl_lm_null_reg, chl_lm1_reg, chl_lm_null, chl_lm1, chl_lm_null_sqrt, 
-    chl_lm1_sqrt, chl_lm2, chl_null_glm, chl_glm) 
-#chl_lm1 <- lm(log(chl) ~ type, data = trees) is best
-#additional variables don't explain the variation in the data
-
-
-summary(lma_glm2)
-#overdispersion test: residual deviance/df = 0.02072451; not overdispersed (bc < 2)
-#RP tends to have a higher LMA than natives and naturalised
-#This suggests that invasive species may invest more in leaf structural components, resulting in higher LMA.
-#tree age has a significant effect on LMA (older trees = lower lma)
-#higher dbh = higher lma
-#upper leaves and evergreen leaves have higher LMA (boxplot only; model disagrees)
-
-#options:
-#1. remove outliers
-#2. glm
-#3. sqrt transformation
-
-
-
-
-
-
-
-#g model ----
-hist(nns$g)
-#transformations don't work
-
-boxplot(g ~ type, data = nns)
-g_glm <- glm(g ~ type + age + dbh + canopy_pos + ever_dec, data = nns, family = Gamma(link = "inverse")) #default gamma distribution link
-g_null_glm <- glm(g ~ 1, data = nns, family = Gamma(link = "inverse"))
-
-ad.test(residuals(g_glm)) 
-#not working -> maybe find justification for why they are important
-
+wilcox.test(native_alien_diff_scaled, mu = 0) #significant (0.03101)
+wilcox.test(invasive_alien_diff_scaled, mu = 0) #significant (0.03101)
