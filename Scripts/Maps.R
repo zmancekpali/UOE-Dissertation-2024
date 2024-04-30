@@ -20,7 +20,7 @@ library(tidyverse)
 ggmap::register_google(key = "AIzaSyDnersipSvcXuK4tCDbr8NOpa-qsrYf9pc", 
                        write = TRUE) #register your own Google API Key here
 
-#Data
+#Data ----
 leaves <- read.csv("Data/traits_analysis2.csv")
 
 leaves <- leaves %>% 
@@ -39,11 +39,13 @@ leaves <- leaves %>%
 d = data.frame(x = rep(c("left", "center", "right"), each = 3),
                y = rep(c("bottom", "middle", "top")))
 
-#Maps
-rbge_map <- get_googlemap("Royal Botanic Gardens Edinburgh", zoom = 16, maptype = "satellite")
+#Maps ----
+rbge_map <- get_googlemap("Royal Botanic Gardens Edinburgh", zoom = 16, 
+                          maptype = "satellite")
 #Simple RBGE map: ----
 (rbge_simple_map <- ggmap(rbge_map) +
-    geom_point(data = leaves, aes(x = long, y = lat, color = type, shape = type), 
+    geom_point(data = leaves, aes(x = long, y = lat, color = type, 
+                                  shape = type), 
                size = 3) +
     scale_color_manual(values = c("#5EA8D9", "#CC168F", "green", "#EEC900"),
                        name = "Invasion type") +
@@ -55,9 +57,12 @@ rbge_map <- get_googlemap("Royal Botanic Gardens Edinburgh", zoom = 16, maptype 
           legend.background = element_rect(fill = "white", color = "white"),
           legend.key.size = unit(1.5, "line")) +
     annotation_north_arrow(location = "tl", which_north = "true", 
-                           style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                                   line_col = 'white',
-                                                                   fill = 'white')))
+                           style = north_arrow_fancy_orienteering(text_col =
+                                                                     'white',
+                                                                   line_col = 
+                                                                     'white',
+                                                                   fill = 
+                                                                     'white')))
 ggsave("rbge_map_simple.jpg", rbge_simple_map, path = "Plots", units = "cm", 
        width = 20, height = 20)
 
@@ -80,16 +85,20 @@ ggsave("rbge_map_simple.jpg", rbge_simple_map, path = "Plots", units = "cm",
                             point.padding = 0.1, segment.color = "white", 
                             size = 3, fontface = "plain") +
   annotation_north_arrow(location = "tl", which_north = "true", 
-                         style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                                 line_col = 'white',
-                                                                 fill = 'white')))
-ggsave("rbge_map_with_abbreviations.jpg", abbr_map, path = "Plots", units = "cm", 
-       width = 20, height = 20)
+                         style = north_arrow_fancy_orienteering (text_col = 
+                                                                   'white',
+                                                                 line_col = 
+                                                                   'white',
+                                                                 fill = 
+                                                                   'white')))
+ggsave("rbge_map_with_abbreviations.jpg", abbr_map, path = "Plots", 
+       units = "cm", width = 20, height = 20)
 
 
 #Map with species names: ----
 (names_map <- ggmap(rbge_map) +
-    geom_point(data = leaves, aes(x = long, y = lat, color = type, shape = type), 
+    geom_point(data = leaves, aes(x = long, y = lat, color = type, 
+                                  shape = type), 
                size = 3) +
     scale_color_manual(values = c("#5EA8D9", "#CD6090", "#2CB82E", "#EEC900"),
                        name = "Invasion type") +
@@ -100,13 +109,19 @@ ggsave("rbge_map_with_abbreviations.jpg", abbr_map, path = "Plots", units = "cm"
           legend.key = element_rect(fill = "white", color = "white"),
           legend.background = element_rect(fill = "white", color = "white"),
           legend.key.size = unit(1.5, "line")) +
-    ggrepel::geom_label_repel(data = leaves, aes(x = long, y = lat, label = latin_name),
-                              max.overlaps = 50, box.padding = 0.5, point.padding = 0.1, 
-                              segment.color = "white", size = 2.5, fontface = "italic") +
+    ggrepel::geom_label_repel(data = leaves, aes(x = long, y = lat, 
+                                                 label = latin_name),
+                              max.overlaps = 50, box.padding = 0.5, 
+                              point.padding = 0.1, 
+                              segment.color = "white", size = 2.5, 
+                              fontface = "italic") +
     annotation_north_arrow(location = "tl", which_north = "true", 
-                           style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                                   line_col = 'white',
-                                                                   fill = 'white')))
+                           style = north_arrow_fancy_orienteering(text_col = 
+                                                                    'white',
+                                                                   line_col = 
+                                                                    'white',
+                                                                   fill = 
+                                                                    'white')))
 ggsave("rbge_map_with_names.jpg", names_map, path = "Plots", units = "cm", 
        width = 20, height = 20)
 
@@ -119,13 +134,19 @@ edinburgh_map <- get_googlemap("Edinburgh", zoom = 12, maptype = "satellite")
     ylab("Latititude (°)") +
     xlab("Longitude (°)") +
     annotation_north_arrow(location = "tr", which_north = "true", 
-                           style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                              line_col = 'white',
-                                                              fill = 'white'),
-                                                              height = unit(1, "cm"),
-                                                              width = unit(1, "cm")) +
+                           style = north_arrow_fancy_orienteering (text_col = 
+                                                                     'white',
+                                                              line_col = 
+                                                                'white',
+                                                              fill = 
+                                                                'white'),
+                                                              height = 
+                                                                 unit(1, "cm"),
+                                                              width = 
+                                                                 unit(1, "cm")) +
     annotate("text", label = "b)",
-             x = -3.28, y = 56.005, color = "white", fontface = "bold", size = 7))
+             x = -3.28, y = 56.005, color = "white", fontface = "bold", 
+             size = 7))
 
 ggsave("edi_map(12).jpg", edi_12zoom, path = "Plots", units = "cm", 
        width = 20, height = 20)
@@ -141,9 +162,12 @@ scotland_map <- get_googlemap("Scotland", zoom = 7, maptype = "satellite")
   ylab("Latititude (°)") +
   xlab("Longitude (°)") +
   annotation_north_arrow(location = "tr", which_north = "true", 
-                           style = north_arrow_fancy_orienteering (text_col = 'white',
-                                                                   line_col = 'white',
-                                                                   fill = 'white'),
+                           style = north_arrow_fancy_orienteering (text_col = 
+                                                                     'white',
+                                                                   line_col = 
+                                                                     'white',
+                                                                   fill = 
+                                                                     'white'),
                            height = unit(1, "cm"),
                            width = unit(1, "cm")) +
     annotate("text", label = "a)",
