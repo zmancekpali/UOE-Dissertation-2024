@@ -1,0 +1,29 @@
+**References:** 
+
+Auguie, B. (2017). *gridExtra: Miscellaneous Functions for "Grid" Graphics*. R package version 2.3.
+
+Dunnington, D. (2023). _ggspatial: Spatial Data Framework for ggplot2_. R package version 1.1.9.
+
+Goslee, S.C. and Urban, D.L. (2007). The ecodist package for dissimilarity-based analysis of ecological data. *Journal of Statistical Software*, 22(7):1-19.
+
+Gross, J. and Ligges, U. (2015). *nortest: Tests for Normality*. R package version 1.0-4.
+
+Lüdecke, D. (2023). *sjPlot: Data Visualization for Statistics in Social Science*. R package version 2.8.15.
+
+Kuhn, M. (2008). Building Predictive Models in R Using the caret Package. *Journal of Statistical Software*, 28(5), 1--26.
+
+Masaaki, H. and Yuan, T. (2016). *ggfortify: Data Visualization Tools for Statistical Analysis Results*.
+
+Oksanen, J., Simpson, G., Blanchet, F., Kindt, R., Legendre, P., Minchin, P., O'Hara, R., Solymos, P., Stevens, M., Szoecs, E., Wagner, H., Barbour, M., Bedward, M., Bolker, B., Borcard, D., Carvalho, G., Chirico, M., De Caceres, M., Durand, S., Evangelista, H., FitzJohn, R., Friendly, M., Furneaux, B., Hannigan, G., Hill, M., Lahti, L., McGlinn, D., Ouellette, M., Ribeiro Cunha, E., Smith, T., Stier, A., Ter Braak, C. and Weedon, J. (2022). *vegan: Community Ecology Package*. R package version 2.6-4.
+
+Paradis, E. and Schliep, K. (2019). "ape 5.0: an environment for modern phylogenetics and evolutionary analyses in R." *Bioinformatics*, 35, 526-528.
+
+Slowikowski, K. (2024). *ggrepel: Automatically Position Non-Overlapping Text Labels with 'ggplot2'*. R package version 0.9.5.
+
+von Lampe, F. and Schellenberg, J. (2024). *goeveg: Functions for Community Data and Ordinations*. R package version 0.7.4.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L.D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T.L., Miller, E., Bache, S.M., Müller, K., Ooms, J., Robinson, D., Seidel, D.P., Spinu, V., Takahashi, K., Vaughan, D., Wilke, C., Woo, K. and Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software8*, 4(43), 1686.
+
+Wilke, C. (2020). *cowplot: Streamlined Plot Theme and Plot Annotations for 'ggplot2'*. Rpackage version 1.1.1
+
+Yuan, T., Masaaki, Hi, Wenxuan, L. (2016). ggfortify: Unified Interface to Visualize Statistical Result of Popular R Packages. *The R Journal*, 8.2: 478-489.
