@@ -57,7 +57,10 @@ trees <- trees %>%
   rename("Rleaf" = "Dark_resp")
 
 trees_pos <- trees %>% 
-  filter(A >= 0) #for physiological measurements
+  filter(A >= 0) #removing negative A values (dead leaves)
+
+rows_to_remove <- trees$A < 0
+removed_rows <- trees[rows_to_remove, ]
 
 (trees_counts <- trees %>%
     group_by(type) %>%
