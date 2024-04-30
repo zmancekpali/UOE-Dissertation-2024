@@ -12,7 +12,7 @@ Each section of the repository is split into individual folders:
   - [Data]() — This folder contains the leaf trait data of the 34 species chosen for the dissertation. 
   - [The script]() — This folder contains the scripts for the code used for this project. For the code containing the statistics only, see [Stats_only]().
   - [Plots]() - this folder contains the plots created with the code from the scripts above.
-  - [Additional files]() - This folder contains any additional files used throughout this dissertation, including the original 2-page plan and process images. 
+  - [Additional files]() - This folder contains any additional files used throughout this dissertation, including the original 2-page plan and the package bibliography. 
 
 __________
 ## Coding etiquette for this repository:
