@@ -24,3 +24,9 @@ The following rules should be upheld at all times when coding or working in this
 5. Keep your code under 100 characters per line (comments can extend past that if necessary).
 
 
+![picture](https://github.com/zmancekpali/UOE-Dissertation-2024/blob/main/Additional%20files/C3F63524-EA7A-4E38-8454-83FFF66750E0.JPG)
+![2](https://github.com/zmancekpali/UOE-Dissertation-2024/blob/main/Additional%20files/IMG_5119.JPG)
+![2](https://github.com/zmancekpali/UOE-Dissertation-2024/blob/main/Additional%20files/IMG_5195%203.JPG)
+![2](https://github.com/zmancekpali/UOE-Dissertation-2024/blob/main/Additional%20files/IMG_5913.JPG)
+![2](https://github.com/zmancekpali/UOE-Dissertation-2024/blob/main/Additional%20files/IMG_5949%203.JPG)
+![2](https://github.com/zmancekpali/UOE-Dissertation-2024/blob/main/Additional%20files/IMG_5197.JPG)
