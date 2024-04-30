@@ -10,6 +10,8 @@ Gross, J. and Ligges, U. (2015). *nortest: Tests for Normality*. R package versi
 
 Lüdecke, D. (2023). *sjPlot: Data Visualization for Statistics in Social Science*. R package version 2.8.15.
 
+Kassambara, A. (2023). _rstatix: Pipe-Friendly Framework for Basic Statistical Tests_. R package version 0.7.2, 
+
 Kuhn, M. (2008). Building Predictive Models in R Using the caret Package. *Journal of Statistical Software*, 28(5), 1--26.
 
 Masaaki, H. and Yuan, T. (2016). *ggfortify: Data Visualization Tools for Statistical Analysis Results*.
@@ -19,6 +21,8 @@ Oksanen, J., Simpson, G., Blanchet, F., Kindt, R., Legendre, P., Minchin, P., O'
 Paradis, E. and Schliep, K. (2019). "ape 5.0: an environment for modern phylogenetics and evolutionary analyses in R." *Bioinformatics*, 35, 526-528.
 
 Slowikowski, K. (2024). *ggrepel: Automatically Position Non-Overlapping Text Labels with 'ggplot2'*. R package version 0.9.5.
+
+Venables, W. N. and Ripley, B. D. (2002). Modern Applied Statistics with S. Fourth Edition. *Springer*, New York. ISBN 0-387-95457-0
 
 von Lampe, F. and Schellenberg, J. (2024). *goeveg: Functions for Community Data and Ordinations*. R package version 0.7.4.
 
