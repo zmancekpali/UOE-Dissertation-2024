@@ -720,6 +720,25 @@ chl_boxplot2 <- chl_boxplot2 + theme(axis.title.x = element_blank(),
 ggsave("boxplot_final_grid.jpg", grid_final, path = "Plots", units = "cm",
        width = 25, height = 32)
 
+#grid for presentation
+a_boxplot2 <- a_boxplot2 + theme(axis.title.x = element_blank(), 
+                                 axis.text.x = element_blank(), 
+                                 axis.ticks.x = element_blank())
+g_boxplot2 <- g_boxplot2 + theme(axis.title.x = element_blank(), 
+                                 axis.text.x = element_blank(), 
+                                 axis.ticks.x = element_blank())
+lma_boxplot2 <- lma_boxplot2 + theme(axis.title.x = element_blank(), 
+                                     axis.text.x = element_blank(), 
+                                     axis.ticks.x = element_blank())
+ldcm_boxplot2 <- ldcm_boxplot2 + theme(axis.title.x = element_blank(), 
+                                       axis.text.x = element_blank(), 
+                                       axis.ticks.x = element_blank())
+
+(grid3 <- grid.arrange(a_boxplot2, g_boxplot2, lma_boxplot2,
+                       ldcm_boxplot2, cn_boxplot2, chl_boxplot2, 
+                       ncol = 2))
+ggsave("boxplot_pres_grid.jpg", grid3, path = "Plots", units = "cm",
+       width = 25, height = 30)
 
 
 #Step 3: Pairwise differences ----
